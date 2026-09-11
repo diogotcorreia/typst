@@ -1,11 +1,15 @@
 use ecow::{EcoString, eco_format};
 use typst_macros::cast;
+use typst_syntax::Span;
 
 use crate::{
-    diag::{Hint, HintedStrResult},
+    diag::{At, Hint, HintedStrResult, SourceResult, StrResult},
+    engine::Engine,
     foundations::{
-        Array, Content, Dict, IntoValue, OneOrMultiple, Packed, Repr, elem, scope,
+        Array, Content, Dict, IntoValue, Label, NativeElement, OneOrMultiple, Packed,
+        Repr, elem, scope,
     },
+    introspection::{Introspector, Location, QueryLabelIntrospection},
     text::LocalName,
 };
 
@@ -26,13 +30,15 @@ impl FormElem {
     type FormDropdownField;
     #[elem]
     type FormListField;
+    #[elem]
+    type FormLabel;
 }
 
 impl LocalName for Packed<FormElem> {
     const KEY: &'static str = "form";
 }
 
-#[elem(name = "checkbox", since = "0.16.0")]
+#[elem(name = "checkbox", since = "0.16.0", Locatable)]
 pub struct FormCheckboxField {
     /// The name of this field.
     #[required]
@@ -45,7 +51,7 @@ pub struct FormCheckboxField {
     pub read_only: bool,
 }
 
-#[elem(name = "text", since = "0.16.0")]
+#[elem(name = "text", since = "0.16.0", Locatable)]
 pub struct FormTextField {
     /// The name of this field.
     #[required]
@@ -73,7 +79,7 @@ pub struct FormTextField {
 }
 
 // TODO: pdf allows `Edit` flag for free-form text entry
-#[elem(name = "dropdown", since = "0.16.0")]
+#[elem(name = "dropdown", since = "0.16.0", Locatable)]
 pub struct FormDropdownField {
     /// The name of this field.
     #[required]
@@ -114,7 +120,7 @@ pub struct FormDropdownField {
 }
 
 // TODO: PDF allows non-multiple list, but HTML does not
-#[elem(name = "list", since = "0.16.0")]
+#[elem(name = "list", since = "0.16.0", Locatable)]
 pub struct FormListField {
     /// The name of this field.
     #[required]
@@ -188,4 +194,46 @@ cast! {
 
 fn str_hint_helper(index: usize, key: &impl Repr) -> EcoString {
     eco_format!("occurred in option at index {index} (`{}`)", key.repr())
+}
+
+#[elem(name = "label", since = "0.16.0", Locatable)]
+pub struct FormLabel {
+    /// The form field that this label describes.
+    #[required]
+    pub target: Label,
+
+    /// The description of the linked form field.
+    #[required]
+    pub body: Content,
+}
+
+impl FormLabel {
+    /// Resolves the destination.
+    pub fn resolve_early(
+        &self,
+        engine: &mut Engine,
+        span: Span,
+    ) -> SourceResult<Location> {
+        let elem = engine
+            .introspect(QueryLabelIntrospection(self.target, span))
+            .at(span)?;
+        Ok(elem.location().unwrap())
+    }
+
+    /// Resolves the destination without an engine.
+    pub fn resolve_late(&self, introspector: &dyn Introspector) -> StrResult<Location> {
+        let elem = introspector.query_label(self.target)?;
+        Ok(elem.location().unwrap())
+    }
+
+    /// Finds all linked-to inputs referenced in an introspector.
+    pub fn find_destinations(
+        introspector: &dyn Introspector,
+    ) -> impl Iterator<Item = Location> {
+        introspector
+            .query(&Self::ELEM.select())
+            .into_iter()
+            .map(|elem| elem.into_packed::<Self>().unwrap())
+            .filter_map(|elem| elem.resolve_late(introspector).ok())
+    }
 }
