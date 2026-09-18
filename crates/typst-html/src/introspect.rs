@@ -233,6 +233,7 @@ impl HtmlIntrospectorBuilder {
                         self.frame_link_targets.insert(*loc);
                     }
                 }
+                FrameItem::FormField(..) => { /* TODO */ }
                 FrameItem::Text(..) | FrameItem::Shape(..) | FrameItem::Image(..) => {}
             }
         }
