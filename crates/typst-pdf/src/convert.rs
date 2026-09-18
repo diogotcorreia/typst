@@ -156,6 +156,7 @@ fn convert_pages(gc: &mut GlobalContext, document: &mut Document) -> SourceResul
         );
 
         tags::page(gc, &mut surface, |gc, surface| {
+            dbg!(&typst_page.frame);
             handle_frame(
                 &mut fc,
                 &typst_page.frame,
@@ -372,6 +373,7 @@ pub(crate) fn handle_frame(
                 handle_image(gc, fc, image, *size, surface, *span)?;
             }
             FrameItem::Link(dest, size) => handle_link(fc, gc, dest, *size)?,
+            FrameItem::FormField(..) => { /* TODO */ }
             FrameItem::Tag(Tag::Start(_, flags)) => {
                 if flags.tagged {
                     tags::handle_start(gc, fc, surface);

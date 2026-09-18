@@ -200,6 +200,7 @@ fn render_frame(canvas: &mut sk::Pixmap, state: State, frame: &Frame) {
                 image::render_image(canvas, state.pre_translate(*pos), image, *size);
             }
             FrameItem::Link(_, _) => {}
+            FrameItem::FormField(_, _) => {}
             FrameItem::Tag(_) => {}
         }
     }
