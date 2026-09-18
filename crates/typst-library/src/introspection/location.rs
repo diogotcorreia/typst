@@ -32,8 +32,8 @@ use crate::model::Numbering;
 /// - In the @reference:model[Model category], the following elements are
 ///   locatable: @asset, @bibliography, @cite, @divider, @document, @emph,
 ///   @enum, @figure, @figure.caption, @footnote, @footnote.entry, @form,
-///   @form.button, @form.checkbox, @form.radio-group, @form.radio,
-///   @form.textbox, @form.choice, @form.label, @heading, @link, @list,
+///   @form.button, @form.checkbox, @form.radio-group, @form.radio, @form.textbox,
+///   @form.choice, @form.label, @form.cursor, @heading, @link, @list,
 ///   @outline, @outline.entry, @par, @quote, @ref, @strong,
 ///   @table, @terms, and @title. Most of the elements in the _Model_ category
 ///   are locatable because semantic elements like headings and figures are
