@@ -18,6 +18,11 @@ pub struct FormElem {
     /// The fields belonging to this form, along with any surrounding content.
     #[required]
     pub body: Content,
+
+    /// A field annotation that should be applied to elements.
+    #[internal]
+    #[ghost]
+    pub field: Option<FormField>,
 }
 
 #[scope]
@@ -236,4 +241,17 @@ impl FormLabel {
             .map(|elem| elem.into_packed::<Self>().unwrap())
             .filter_map(|elem| elem.resolve_late(introspector).ok())
     }
+}
+
+/// A form field.
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum FormField {
+    /// A checkbox.
+    Checkbox(CheckboxField),
+}
+
+/// A checkbox field.
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct CheckboxField {
+    pub name: EcoString,
 }

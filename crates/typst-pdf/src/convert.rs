@@ -1,11 +1,16 @@
+use std::cell::RefCell;
+use std::sync::Arc;
+
 use comemo::Tracked;
 use ecow::{EcoString, EcoVec, eco_format};
 use indexmap::IndexMap;
+use krilla::annotation::WidgetAnnotationKind;
 use krilla::configure::validate::VersionedFeature;
 use krilla::configure::{PdfVersion, ValidationError, Validator, Validators};
 use krilla::destination::NamedDestination;
 use krilla::embed::EmbedError;
 use krilla::error::{KrillaError, LimitError};
+use krilla::form::{FieldKind, FieldTree, Node};
 use krilla::geom::{PathBuilder, Rect};
 use krilla::page::{PageLabel, PageSettings};
 use krilla::pdf::PdfError;
@@ -29,6 +34,7 @@ use typst_library::visualize::{Geometry, Paint, SpotColorantName};
 use typst_syntax::Span;
 
 use crate::attach::attach_files;
+use crate::form::handle_form_field;
 use crate::image::handle_image;
 use crate::link::{LinkAnnotation, handle_link};
 use crate::metadata::build_metadata;
@@ -94,6 +100,13 @@ pub fn convert(
     document.set_metadata(build_metadata(&gc, doc_lang));
     document.set_tag_tree(tree);
 
+    let mut field_tree = FieldTree::new();
+    for field in &mut gc.fields {
+        let field = field.replace(krilla::form::FormField::push_button("".into()).into());
+        field_tree.push(Node::Leaf(field));
+    }
+    document.set_field_tree(field_tree);
+
     finish(document, gc)
 }
 
@@ -156,6 +169,7 @@ fn convert_pages(gc: &mut GlobalContext, document: &mut Document) -> SourceResul
         );
 
         tags::page(gc, &mut surface, |gc, surface| {
+            dbg!(&typst_page.frame);
             handle_frame(
                 &mut fc,
                 &typst_page.frame,
@@ -170,6 +184,9 @@ fn convert_pages(gc: &mut GlobalContext, document: &mut Document) -> SourceResul
 
         let link_annotations = fc.link_annotations.into_values().flatten();
         tags::add_link_annotations(gc, &mut page, link_annotations);
+
+        let widget_annotations = fc.widget_annotations;
+        tags::add_widget_annotations(gc, &mut page, widget_annotations);
     }
 
     Ok(())
@@ -227,6 +244,9 @@ pub(crate) struct FrameContext {
     states: Vec<State>,
     /// The link annotations belonging to a Link tag.
     link_annotations: IndexMap<GroupId, SmallVec<[LinkAnnotation; 1]>, FxBuildHasher>,
+    /// The widget annotations belonging to a Widget tag.
+    // TODO: make this an IndexMap too, and correctly tag things
+    widget_annotations: Vec<(Arc<RefCell<FieldKind>>, WidgetAnnotationKind)>,
 }
 
 impl FrameContext {
@@ -235,6 +255,7 @@ impl FrameContext {
             page_idx,
             states: vec![State::new(size)],
             link_annotations: IndexMap::default(),
+            widget_annotations: Vec::default(),
         }
     }
 
@@ -275,6 +296,14 @@ impl FrameContext {
         let annotations = self.link_annotations.entry(id).or_default();
         annotations.push(annotation);
     }
+
+    pub(crate) fn push_widget_annotation(
+        &mut self,
+        field: Arc<RefCell<FieldKind>>,
+        annotation: WidgetAnnotationKind,
+    ) {
+        self.widget_annotations.push((field, annotation));
+    }
 }
 
 /// Globally needed context for converting a Typst document.
@@ -301,6 +330,8 @@ pub(crate) struct GlobalContext<'a> {
     pub(crate) page_index_converter: PageIndexConverter,
     /// Tagged PDF context.
     pub(crate) tags: Tags,
+    /// Interactive form fields.
+    pub(crate) fields: Vec<Arc<RefCell<FieldKind>>>, // TODO better structure?
 }
 
 impl<'a> GlobalContext<'a> {
@@ -323,6 +354,7 @@ impl<'a> GlobalContext<'a> {
             image_spans: FxHashSet::default(),
             page_index_converter,
             tags,
+            fields: Vec::default(),
         }
     }
 }
@@ -372,6 +404,9 @@ pub(crate) fn handle_frame(
                 handle_image(gc, fc, image, *size, surface, *span)?;
             }
             FrameItem::Link(dest, size) => handle_link(fc, gc, dest, *size)?,
+            FrameItem::FormField(field, size) => {
+                handle_form_field(fc, gc, surface, field, *size)?;
+            }
             FrameItem::Tag(Tag::Start(_, flags)) => {
                 if flags.tagged {
                     tags::handle_start(gc, fc, surface);

@@ -1,4 +1,10 @@
+use std::cell::RefCell;
+use std::ops::DerefMut;
+use std::sync::Arc;
+
+use krilla::annotation::WidgetAnnotationKind;
 use krilla::configure::PdfVersion;
+use krilla::form::FieldKind;
 use krilla::geom as kg;
 use krilla::page::Page;
 use krilla::surface::Surface;
@@ -145,7 +151,7 @@ pub fn disabled(gc: &GlobalContext) -> bool {
     !gc.options.tagged() || gc.tags.in_tiling
 }
 
-/// Add all annotations that were found in the page frame.
+/// Add all link annotations that were found in the page frame.
 pub fn add_link_annotations(
     gc: &mut GlobalContext,
     page: &mut Page,
@@ -168,6 +174,24 @@ pub fn add_link_annotations(
         } else {
             page.add_annotation(annotation);
         }
+    }
+}
+
+/// Add all widget annotations that were found in the page frame.
+pub fn add_widget_annotations(
+    gc: &mut GlobalContext,
+    page: &mut Page,
+    annotations: impl IntoIterator<Item = (Arc<RefCell<FieldKind>>, WidgetAnnotationKind)>,
+) {
+    for (field, annot) in annotations {
+        match field.borrow_mut().deref_mut() {
+            FieldKind::Checkbox(form_field) => {
+                page.add_widget_annotation(form_field, annot.into());
+            }
+            _ => { /*TODO*/ }
+        }
+
+        gc.fields.push(field);
     }
 }
 

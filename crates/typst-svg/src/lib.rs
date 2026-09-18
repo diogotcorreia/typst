@@ -332,7 +332,7 @@ impl<'a> SVGRenderer<'a> {
                     self.render_image(svg, &state, image, size);
                 }
                 FrameItem::Link(dest, size) => self.render_link(svg, &state, dest, *size),
-                FrameItem::Tag(_) => {}
+                FrameItem::FormField(..) | FrameItem::Tag(_) => {}
             }
         }
     }

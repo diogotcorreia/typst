@@ -15,7 +15,10 @@ use typst_library::layout::{
     Size, Sizing, SkewElem, Spacing, StackChild, StackElem, TrackSizings, VElem,
 };
 use typst_library::math::EquationElem;
-use typst_library::model::{ArtifactElem, ArtifactKind, PdfMarkerTag};
+use typst_library::model::{
+    ArtifactElem, ArtifactKind, CheckboxField, FormCheckboxField, FormElem, FormField,
+    PdfMarkerTag,
+};
 use typst_library::model::{
     Attribution, BibliographyElem, CiteElem, CiteGroup, CslIndentElem, CslLightElem,
     Destination, DirectLinkElem, DividerElem, EmphElem, EnumElem, FigureCaption,
@@ -65,6 +68,8 @@ pub fn register(rules: &mut NativeRuleMap) {
     rules.register(Paged, CSL_INDENT_RULE);
     rules.register(Paged, TABLE_RULE);
     rules.register(Paged, TABLE_CELL_RULE);
+    rules.register(Paged, FORM_RULE);
+    rules.register(Paged, FORM_CHECKBOX_FIELD_RULE);
 
     // Text.
     rules.register(Paged, SUB_RULE);
@@ -538,6 +543,15 @@ const TABLE_RULE: ShowFn<TableElem> = |elem, _, _| {
 
 const TABLE_CELL_RULE: ShowFn<TableCell> = |elem, _, styles| {
     show_cell(elem.body.clone(), elem.inset.get(styles), elem.align.get(styles))
+};
+
+const FORM_RULE: ShowFn<FormElem> = |elem, _, _| Ok(elem.body.clone());
+
+const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, _| {
+    Ok(SquareElem::new().pack().spanned(elem.span()).set(
+        FormElem::field,
+        Some(FormField::Checkbox(CheckboxField { name: elem.name.clone() })),
+    ))
 };
 
 const SUB_RULE: ShowFn<SubElem> = |elem, _, styles| {
