@@ -201,7 +201,8 @@ impl PagedIntrospectorBuilder {
                         self.frame_link_targets.insert(*loc);
                     }
                 }
-                FrameItem::FormField(..) => { /* TODO */ }
+                FrameItem::FormField(..) | FrameItem::FieldAppearance(..) => { /* TODO */
+                }
                 FrameItem::Text(..) | FrameItem::Shape(..) | FrameItem::Image(..) => {}
             }
         }

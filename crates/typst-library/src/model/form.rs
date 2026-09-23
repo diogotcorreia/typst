@@ -1,15 +1,17 @@
 use ecow::{EcoString, eco_format};
 use typst_macros::cast;
 use typst_syntax::Span;
+use typst_utils::LazyHash;
 
 use crate::{
     diag::{At, Hint, HintedStrResult, SourceResult, StrResult},
     engine::Engine,
     foundations::{
         Array, Content, Dict, IntoValue, Label, NativeElement, OneOrMultiple, Packed,
-        Repr, elem, scope,
+        Repr, Smart, elem, scope,
     },
     introspection::{Introspector, Location, QueryLabelIntrospection},
+    layout::{Frame, Length, Rel, Sizing},
     text::LocalName,
 };
 
@@ -23,6 +25,11 @@ pub struct FormElem {
     #[internal]
     #[ghost]
     pub field: Option<FormField>,
+
+    /// A field annotation that should be applied to appearances.
+    #[internal]
+    #[ghost]
+    pub appearance: Option<FieldAppearance>,
 }
 
 #[scope]
@@ -54,6 +61,12 @@ pub struct FormCheckboxField {
 
     /// Whether this checkbox is read-only and its value cannot be changed.
     pub read_only: bool,
+
+    /// The checkbox's width, relative to its parent container.
+    pub width: Smart<Rel<Length>>,
+
+    /// The checkbox's height, relative to its parent container.
+    pub height: Sizing,
 }
 
 #[elem(name = "text", since = "0.16.0", Locatable)]
@@ -250,8 +263,33 @@ pub enum FormField {
     Checkbox(CheckboxField),
 }
 
+// impl FormField {
+//     pub fn new_checkbox(
+//         name: EcoString,
+//         on_content: Content,
+//         off_content: Content,
+//     ) -> Self {
+//         Self::Checkbox(CheckboxField { name, on_frame: todo!(), off_frame: todo!() })
+//     }
+// }
+
 /// A checkbox field.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CheckboxField {
     pub name: EcoString,
+    // pub on_frame: LazyHash<Frame>,
+    // pub off_frame: LazyHash<Frame>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct FieldAppearance {
+    pub name: EcoString, // TODO: distinguish between multiple instances of the same field?
+    pub kind: FieldAppearanceKind,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum FieldAppearanceKind {
+    Single,
+    On,
+    Off,
 }
