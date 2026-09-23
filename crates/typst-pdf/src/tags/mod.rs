@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::ops::DerefMut;
 use std::sync::Arc;
 
+use ecow::EcoString;
 use krilla::annotation::WidgetAnnotationKind;
 use krilla::configure::PdfVersion;
 use krilla::form::FieldKind;
@@ -18,6 +19,7 @@ use typst_library::visualize::{Image, Shape};
 
 use crate::PdfOptions;
 use crate::convert::{FrameContext, GlobalContext};
+use crate::form::WidgetAnnotation;
 use crate::link::{LinkAnnotation, LinkAnnotationKind};
 use crate::tags::tree::Tree;
 
@@ -181,17 +183,13 @@ pub fn add_link_annotations(
 pub fn add_widget_annotations(
     gc: &mut GlobalContext,
     page: &mut Page,
-    annotations: impl IntoIterator<Item = (Arc<RefCell<FieldKind>>, WidgetAnnotationKind)>,
+    annotations: impl Iterator<Item = (EcoString, WidgetAnnotation)>,
 ) {
     for (field, annot) in annotations {
-        match field.borrow_mut().deref_mut() {
-            FieldKind::Checkbox(form_field) => {
-                page.add_widget_annotation(form_field, annot.into());
-            }
-            _ => { /*TODO*/ }
-        }
-
-        gc.fields.push(field);
+        gc.fields
+            .get_mut(&field)
+            .expect("could not find field for widget annotation")
+            .insert_annotation(page, annot);
     }
 }
 

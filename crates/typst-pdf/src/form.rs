@@ -4,33 +4,112 @@ use std::sync::Arc;
 use krilla::action::{Action, LinkAction};
 use krilla::annotation::{Target, WidgetAnnotationKind};
 use krilla::destination::XyzDestination;
+use krilla::form as kf;
 use krilla::form::FieldKind;
 use krilla::geom as kg;
+use krilla::page::Page;
+use krilla::stream::Stream;
 use krilla::surface::Surface;
+use krilla::tagging::Identifier;
 use typst_library::diag::{At, ExpectInternal, SourceResult, bail};
 use typst_library::introspection::PagedPosition;
-use typst_library::layout::{Abs, Point, Size};
-use typst_library::model::{Destination, FormField, ResolvedLink};
+use typst_library::layout::{Abs, Frame, Point, Sides, Size};
+use typst_library::model::{
+    Destination, FieldAppearance, FieldAppearanceKind, FormField, ResolvedLink,
+};
 use typst_syntax::Span;
 
-use crate::convert::{FrameContext, GlobalContext, PageIndexConverter};
+use crate::convert::{FrameContext, GlobalContext, PageIndexConverter, handle_frame};
 use crate::tags::{self, AnnotationId, GroupId};
 use crate::util::PointExt;
 
-// pub(crate) struct WidgetAnnotation {
-//     pub kind: LinkAnnotationKind,
-//     pub alt: Option<String>,
-//     pub span: Span,
-//     pub rects: Vec<kg::Rect>,
-//     pub target: Target,
-// }
-//
-// pub(crate) enum WidgetAnnotationKind {
-//     /// A link annotation that is tagged within a `Link` structure element.
-//     Tagged(AnnotationId),
-//     /// A link annotation within an artifact.
-//     Artifact,
-// }
+pub(crate) struct Field {
+    pub krilla_field: FieldKind,
+}
+
+impl Field {
+    pub(crate) fn new(field: FormField) -> Self {
+        let field = match field {
+            FormField::Checkbox(checkbox_field) => {
+                kf::FormField::checkbox(checkbox_field.name.to_string(), false)
+            }
+        };
+
+        Self { krilla_field: field.into() }
+    }
+
+    pub(crate) fn insert_annotation(
+        &mut self,
+        page: &mut Page,
+        annotation: WidgetAnnotation,
+    ) -> Identifier {
+        match &mut self.krilla_field {
+            FieldKind::PushButton(..) => todo!(),
+            FieldKind::Checkbox(form_field) => {
+                let widget = form_field.new_widget(
+                    annotation.bbox,
+                    annotation.off_stream.expect("checkbox has no off appearance"),
+                    annotation.on_stream.expect("checkbox has no on appearance"),
+                );
+
+                page.add_widget_annotation(form_field, widget.into())
+            }
+            FieldKind::Radio(..) => todo!(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct WidgetAnnotation {
+    pub bbox: kg::Rect,
+    pub on_stream: Option<Stream>,
+    pub off_stream: Option<Stream>,
+}
+
+impl WidgetAnnotation {
+    pub fn new(bbox: kg::Rect) -> Self {
+        Self { bbox, on_stream: None, off_stream: None }
+    }
+}
+
+pub(crate) fn handle_field_appearance(
+    fc: &mut FrameContext,
+    gc: &mut GlobalContext,
+    surface: &mut Surface,
+    appearance: &FieldAppearance,
+    body: &Frame,
+) -> SourceResult<()> {
+    let rect = bounding_box(fc, body.size());
+
+    let stream = {
+        let mut builder = surface.stream_builder();
+        let mut fc = FrameContext::new(None, body.size());
+        handle_frame(
+            &mut fc,
+            body,
+            Sides::splat(Abs::zero()),
+            None,
+            &mut builder.surface(),
+            gc,
+        )?;
+
+        builder.finish()
+    };
+
+    let widget = fc.get_widget_annotation_mut(appearance.name.clone(), rect);
+    match appearance.kind {
+        FieldAppearanceKind::Single | FieldAppearanceKind::Off => {
+            debug_assert!(widget.off_stream.is_none());
+            widget.off_stream = Some(stream);
+        }
+        FieldAppearanceKind::On => {
+            debug_assert!(widget.on_stream.is_none());
+            widget.on_stream = Some(stream);
+        }
+    }
+
+    Ok(())
+}
 
 pub(crate) fn handle_form_field(
     fc: &mut FrameContext,
@@ -39,29 +118,14 @@ pub(crate) fn handle_form_field(
     form_field: &FormField,
     size: Size,
 ) -> SourceResult<()> {
-    let rect = bounding_box(fc, size);
-    let (field, annotation) = match form_field {
+    match form_field {
         FormField::Checkbox(checkbox_field) => {
-            let field =
-                krilla::form::FormField::checkbox(checkbox_field.name.to_string(), false);
-
-            let ap = {
-                let mut builder = surface.stream_builder();
-                builder.surface().finish();
-                builder.finish()
-            };
-
-            let widget = field.new_widget(rect, ap.clone(), ap.clone());
-
-            (FieldKind::from(field), WidgetAnnotationKind::from(widget))
+            if !gc.fields.contains_key(&checkbox_field.name) {
+                let field = Field::new(form_field.clone());
+                gc.fields.insert(checkbox_field.name.clone(), field);
+            }
         }
     };
-
-    let field = Arc::new(RefCell::new(field));
-    fc.push_widget_annotation(field.clone(), annotation);
-
-    gc.fields.push(field);
-
 
     Ok(())
 }

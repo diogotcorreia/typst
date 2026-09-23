@@ -1,6 +1,8 @@
 use typst_library::foundations::StyleChain;
 use typst_library::layout::{Abs, Fragment, Frame, FrameItem, HideElem, Point, Sides};
-use typst_library::model::{Destination, FormElem, FormField, LinkElem, ParElem};
+use typst_library::model::{
+    Destination, FieldAppearance, FormElem, FormField, LinkElem, ParElem,
+};
 
 /// Frame-level modifications resulting from styles that do not impose any
 /// layout structure.
@@ -21,8 +23,10 @@ use typst_library::model::{Destination, FormElem, FormField, LinkElem, ParElem};
 pub struct FrameModifiers {
     /// A destination to link to.
     dest: Option<Destination>,
-    /// A form field to show.
+    /// A form field to create.
     field: Option<FormField>,
+    /// A form field appearance.
+    field_appearance: Option<FieldAppearance>,
     /// Whether the contents of the frame should be hidden.
     hidden: bool,
 }
@@ -33,6 +37,7 @@ impl FrameModifiers {
         Self {
             dest: styles.get_cloned(LinkElem::current),
             field: styles.get_cloned(FormElem::field),
+            field_appearance: styles.get_cloned(FormElem::appearance),
             hidden: styles.get(HideElem::hidden),
         }
     }
@@ -108,10 +113,14 @@ fn modify_frame(
         }
         frame.push(pos, FrameItem::Link(dest.clone(), size));
     }
+    if let Some(appearance) = &modifiers.field_appearance {
+        frame.set_field_appearance(appearance.clone());
+    }
+
     if let Some(field) = &modifiers.field {
         let pos = Point::zero();
         let size = frame.size();
-        frame.push(pos, FrameItem::FormField(field.clone(), size));
+        frame.prepend(pos, FrameItem::FormField(field.clone(), size));
     }
 
     if modifiers.hidden {

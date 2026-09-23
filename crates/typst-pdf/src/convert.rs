@@ -34,7 +34,7 @@ use typst_library::visualize::{Geometry, Paint, SpotColorantName};
 use typst_syntax::Span;
 
 use crate::attach::attach_files;
-use crate::form::handle_form_field;
+use crate::form::{Field, WidgetAnnotation, handle_field_appearance, handle_form_field};
 use crate::image::handle_image;
 use crate::link::{LinkAnnotation, handle_link};
 use crate::metadata::build_metadata;
@@ -101,9 +101,8 @@ pub fn convert(
     document.set_tag_tree(tree);
 
     let mut field_tree = FieldTree::new();
-    for field in &mut gc.fields {
-        let field = field.replace(krilla::form::FormField::push_button("".into()).into());
-        field_tree.push(Node::Leaf(field));
+    for field in std::mem::take(&mut gc.fields).into_values() {
+        field_tree.push(Node::Leaf(field.krilla_field));
     }
     document.set_field_tree(field_tree);
 
@@ -186,7 +185,7 @@ fn convert_pages(gc: &mut GlobalContext, document: &mut Document) -> SourceResul
         tags::add_link_annotations(gc, &mut page, link_annotations);
 
         let widget_annotations = fc.widget_annotations;
-        tags::add_widget_annotations(gc, &mut page, widget_annotations);
+        tags::add_widget_annotations(gc, &mut page, widget_annotations.into_iter());
     }
 
     Ok(())
@@ -246,7 +245,7 @@ pub(crate) struct FrameContext {
     link_annotations: IndexMap<GroupId, SmallVec<[LinkAnnotation; 1]>, FxBuildHasher>,
     /// The widget annotations belonging to a Widget tag.
     // TODO: make this an IndexMap too, and correctly tag things
-    widget_annotations: Vec<(Arc<RefCell<FieldKind>>, WidgetAnnotationKind)>,
+    widget_annotations: IndexMap<EcoString, WidgetAnnotation, FxBuildHasher>,
 }
 
 impl FrameContext {
@@ -255,7 +254,7 @@ impl FrameContext {
             page_idx,
             states: vec![State::new(size)],
             link_annotations: IndexMap::default(),
-            widget_annotations: Vec::default(),
+            widget_annotations: IndexMap::default(),
         }
     }
 
@@ -297,12 +296,14 @@ impl FrameContext {
         annotations.push(annotation);
     }
 
-    pub(crate) fn push_widget_annotation(
+    pub(crate) fn get_widget_annotation_mut(
         &mut self,
-        field: Arc<RefCell<FieldKind>>,
-        annotation: WidgetAnnotationKind,
-    ) {
-        self.widget_annotations.push((field, annotation));
+        name: EcoString,
+        bbox: Rect,
+    ) -> &mut WidgetAnnotation {
+        self.widget_annotations
+            .entry(name)
+            .or_insert_with(|| WidgetAnnotation::new(bbox))
     }
 }
 
@@ -331,7 +332,7 @@ pub(crate) struct GlobalContext<'a> {
     /// Tagged PDF context.
     pub(crate) tags: Tags,
     /// Interactive form fields.
-    pub(crate) fields: Vec<Arc<RefCell<FieldKind>>>, // TODO better structure?
+    pub(crate) fields: FxHashMap<EcoString, Field>, // TODO better structure?
 }
 
 impl<'a> GlobalContext<'a> {
@@ -354,7 +355,7 @@ impl<'a> GlobalContext<'a> {
             image_spans: FxHashSet::default(),
             page_index_converter,
             tags,
-            fields: Vec::default(),
+            fields: FxHashMap::default(),
         }
     }
 }
@@ -406,6 +407,9 @@ pub(crate) fn handle_frame(
             FrameItem::Link(dest, size) => handle_link(fc, gc, dest, *size)?,
             FrameItem::FormField(field, size) => {
                 handle_form_field(fc, gc, surface, field, *size)?;
+            }
+            FrameItem::FieldAppearance(appearance, frame) => {
+                handle_field_appearance(fc, gc, surface, appearance, frame)?;
             }
             FrameItem::Tag(Tag::Start(_, flags)) => {
                 if flags.tagged {

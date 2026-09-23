@@ -201,6 +201,7 @@ fn render_frame(canvas: &mut sk::Pixmap, state: State, frame: &Frame) {
             }
             FrameItem::Link(_, _) => {}
             FrameItem::FormField(_, _) => {}
+            FrameItem::FieldAppearance(_, _) => { /*TODO*/ }
             FrameItem::Tag(_) => {}
         }
     }

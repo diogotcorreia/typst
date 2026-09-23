@@ -234,6 +234,7 @@ impl HtmlIntrospectorBuilder {
                     }
                 }
                 FrameItem::FormField(..) => { /* TODO */ }
+                FrameItem::FieldAppearance(..) => { /* TODO */ }
                 FrameItem::Text(..) | FrameItem::Shape(..) | FrameItem::Image(..) => {}
             }
         }

@@ -3,8 +3,8 @@ use ecow::{EcoVec, eco_format};
 use smallvec::smallvec;
 use typst_library::diag::{At, SourceResult, bail};
 use typst_library::foundations::{
-    Content, Context, NativeElement, NativeRuleMap, Packed, Resolve, ShowFn, Smart,
-    StyleChain, Synthesize, Target, dict,
+    Content, Context, NativeElement, NativeRuleMap, Packed, Resolve, SequenceElem,
+    ShowFn, Smart, StyleChain, Synthesize, Target, dict,
 };
 use typst_library::introspection::{Counter, Locator, LocatorLink};
 use typst_library::layout::{
@@ -16,8 +16,8 @@ use typst_library::layout::{
 };
 use typst_library::math::EquationElem;
 use typst_library::model::{
-    ArtifactElem, ArtifactKind, CheckboxField, FormCheckboxField, FormElem, FormField,
-    PdfMarkerTag,
+    ArtifactElem, ArtifactKind, CheckboxField, FieldAppearance, FieldAppearanceKind,
+    FormCheckboxField, FormElem, FormField, PdfMarkerTag,
 };
 use typst_library::model::{
     Attribution, BibliographyElem, CiteElem, CiteGroup, CslIndentElem, CslLightElem,
@@ -547,11 +547,47 @@ const TABLE_CELL_RULE: ShowFn<TableCell> = |elem, _, styles| {
 
 const FORM_RULE: ShowFn<FormElem> = |elem, _, _| Ok(elem.body.clone());
 
-const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, _| {
-    Ok(SquareElem::new().pack().spanned(elem.span()).set(
+const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, styles| {
+    // TODO: place checked/unchecked elements on top of each other
+    let children = vec![
+        SquareElem::new()
+            .with_width(elem.width.get(styles))
+            .with_height(elem.height.get(styles))
+            .pack()
+            .set(
+                FormElem::appearance,
+                Some(FieldAppearance {
+                    name: elem.name.clone(),
+                    kind: FieldAppearanceKind::On,
+                }),
+            ),
+        CircleElem::new()
+            .with_width(elem.width.get(styles))
+            .with_height(elem.height.get(styles))
+            .pack()
+            .set(
+                FormElem::appearance,
+                Some(FieldAppearance {
+                    name: elem.name.clone(),
+                    kind: FieldAppearanceKind::Off,
+                }),
+            ),
+    ];
+    Ok(Content::sequence(children).spanned(elem.span()).set(
         FormElem::field,
         Some(FormField::Checkbox(CheckboxField { name: elem.name.clone() })),
     ))
+    // Ok(BlockElem::new()
+    //     .with_width(elem.width.get(styles))
+    //     .with_height(elem.height.get(styles))
+    //     .with_breakable(false)
+    //     .with_body(Some(BlockBody::Content(Content::empty())))
+    //     .pack()
+    //     .spanned(elem.span())
+    //     .set(
+    //         FormElem::field,
+    //         Some(FormField::new_checkbox(elem.name.clone(), Content::empty(), Content::empty())),
+    //     ))
 };
 
 const SUB_RULE: ShowFn<SubElem> = |elem, _, styles| {
