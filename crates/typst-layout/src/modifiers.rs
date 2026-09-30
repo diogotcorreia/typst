@@ -146,6 +146,7 @@ where
     // which may bloat the output considerably.
     let reset_dest;
     let reset_field;
+    let reset_field_appearance;
     let outer = styles;
     let mut styles = styles;
     if modifiers.dest.is_some() {
@@ -155,6 +156,10 @@ where
     if modifiers.field.is_some() {
         reset_field = FormElem::field.set(None).wrap();
         styles = outer.chain(&reset_field);
+    }
+    if modifiers.field_appearance.is_some() {
+        reset_field_appearance = FormElem::appearance.set(None).wrap();
+        styles = outer.chain(&reset_field_appearance);
     }
 
     layout(styles).modified(&modifiers)

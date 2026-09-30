@@ -63,10 +63,10 @@ pub struct FormCheckboxField {
     pub read_only: bool,
 
     /// The checkbox's width, relative to its parent container.
-    pub width: Smart<Rel<Length>>,
+    pub width: Sizing,
 
     /// The checkbox's height, relative to its parent container.
-    pub height: Sizing,
+    pub height: Smart<Rel<Length>>,
 }
 
 #[elem(name = "text", since = "0.16.0", Locatable)]

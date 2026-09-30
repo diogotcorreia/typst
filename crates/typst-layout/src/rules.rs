@@ -3,16 +3,17 @@ use ecow::{EcoVec, eco_format};
 use smallvec::smallvec;
 use typst_library::diag::{At, SourceResult, bail};
 use typst_library::foundations::{
-    Content, Context, NativeElement, NativeRuleMap, Packed, Resolve, SequenceElem,
-    ShowFn, Smart, StyleChain, Synthesize, Target, dict,
+    Content, Context, FromValue, IntoValue, NativeElement, NativeRuleMap, Packed,
+    Resolve, ShowFn, Smart, StyleChain, SymbolElem, Synthesize, Target, dict,
 };
 use typst_library::introspection::{Counter, Locator, LocatorLink};
 use typst_library::layout::{
-    Abs, AlignElem, Alignment, Axes, BlockBody, BlockElem, ColumnsElem, Em,
-    FixedAlignment, GridCell, GridChild, GridElem, GridItem, HAlignment, HElem, HideElem,
-    InlineElem, LayoutElem, Length, MoveElem, OuterVAlignment, PadElem, PageElem,
-    PlaceElem, PlacementScope, Region, Rel, RepeatElem, RotateElem, ScaleElem, Sides,
-    Size, Sizing, SkewElem, Spacing, StackChild, StackElem, TrackSizings, VElem,
+    Abs, AlignElem, Alignment, Axes, BaselinePos, BlockBody, BlockElem, BoxElem,
+    ColumnsElem, Em, FixedAlignment, GridCell, GridChild, GridElem, GridItem, HAlignment,
+    HElem, HideElem, InlineElem, LayoutElem, Length, MoveElem, OuterVAlignment, PadElem,
+    PageElem, PlaceElem, PlacementScope, Ratio, Region, Rel, RepeatElem, RotateElem,
+    ScaleElem, Sides, Size, Sizing, SkewElem, Spacing, StackChild, StackElem,
+    TrackSizings, VAlignment, VElem,
 };
 use typst_library::math::EquationElem;
 use typst_library::model::{
@@ -548,23 +549,47 @@ const TABLE_CELL_RULE: ShowFn<TableCell> = |elem, _, styles| {
 const FORM_RULE: ShowFn<FormElem> = |elem, _, _| Ok(elem.body.clone());
 
 const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, styles| {
-    // TODO: place checked/unchecked elements on top of each other
-    let children = vec![
-        SquareElem::new()
-            .with_width(elem.width.get(styles))
-            .with_height(elem.height.get(styles))
+    // TODO: this will probably be changed, but used as a PoC for now
+    let span = elem.span();
+
+    let inner_width = Smart::Custom(Ratio::one().into());
+    let inner_height = Sizing::Rel(Ratio::one().into());
+
+    let width = elem.width.get(styles);
+    let width = if width.is_auto() { Sizing::Rel(Em::one().into()) } else { width };
+    let height = elem.height.get(styles).or(Smart::Custom(Em::one().into()));
+
+    let checkmark = AlignElem::new(SymbolElem::packed("✓"))
+        .with_alignment(HAlignment::Center + VAlignment::Horizon)
+        .pack();
+
+    let children = [
+        PlaceElem::new(
+            RectElem::new()
+                .with_width(inner_width)
+                .with_height(inner_height)
+                .with_outset(Sides::splat(Some(Abs::pt(-0.5).into())))
+                .with_inset(Sides::splat(Some(Rel::zero())))
+                .with_body(Some(checkmark))
+                .pack()
+                .spanned(span)
+                .set(
+                    FormElem::appearance,
+                    Some(FieldAppearance {
+                        name: elem.name.clone(),
+                        kind: FieldAppearanceKind::On,
+                    }),
+                ),
+        )
+        .with_alignment(Smart::Custom(HAlignment::Left + VAlignment::Top))
+        .pack()
+        .spanned(span),
+        RectElem::new()
+            .with_width(inner_width)
+            .with_height(inner_height)
+            .with_outset(Sides::splat(Some(Abs::pt(-0.5).into())))
             .pack()
-            .set(
-                FormElem::appearance,
-                Some(FieldAppearance {
-                    name: elem.name.clone(),
-                    kind: FieldAppearanceKind::On,
-                }),
-            ),
-        CircleElem::new()
-            .with_width(elem.width.get(styles))
-            .with_height(elem.height.get(styles))
-            .pack()
+            .spanned(span)
             .set(
                 FormElem::appearance,
                 Some(FieldAppearance {
@@ -573,21 +598,23 @@ const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, styles| {
                 }),
             ),
     ];
-    Ok(Content::sequence(children).spanned(elem.span()).set(
+    let states = Content::sequence(children).spanned(elem.span()).set(
         FormElem::field,
         Some(FormField::Checkbox(CheckboxField { name: elem.name.clone() })),
-    ))
-    // Ok(BlockElem::new()
-    //     .with_width(elem.width.get(styles))
-    //     .with_height(elem.height.get(styles))
-    //     .with_breakable(false)
-    //     .with_body(Some(BlockBody::Content(Content::empty())))
-    //     .pack()
-    //     .spanned(elem.span())
-    //     .set(
-    //         FormElem::field,
-    //         Some(FormField::new_checkbox(elem.name.clone(), Content::empty(), Content::empty())),
-    //     ))
+    );
+
+    // TODO: fix inset
+    Ok(BoxElem::new()
+        .with_width(width)
+        .with_height(height)
+        .with_baseline(
+            // TODO: impl From<...> for BaselinePos
+            BaselinePos::from_value(Rel::from(Length::from(Em::new(0.2))).into_value())
+                .unwrap(),
+        )
+        .with_body(Some(states))
+        .pack()
+        .spanned(elem.span()))
 };
 
 const SUB_RULE: ShowFn<SubElem> = |elem, _, styles| {
