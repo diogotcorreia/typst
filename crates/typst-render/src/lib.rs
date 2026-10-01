@@ -1,5 +1,6 @@
 //! Rendering of Typst documents into raster images.
 
+mod form;
 mod format;
 mod image;
 mod paint;
@@ -201,7 +202,9 @@ fn render_frame(canvas: &mut sk::Pixmap, state: State, frame: &Frame) {
             }
             FrameItem::Link(_, _) => {}
             FrameItem::FormField(_, _) => {}
-            FrameItem::FieldAppearance(_, _) => { /*TODO*/ }
+            FrameItem::FieldAppearance(appearance, frame) => {
+                form::render_field(canvas, state, appearance, frame);
+            }
             FrameItem::Tag(_) => {}
         }
     }

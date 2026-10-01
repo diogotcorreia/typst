@@ -607,6 +607,7 @@ const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, styles| {
     let inner = BoxElem::new()
         .with_width(width)
         .with_height(height)
+        .with_clip(true) // PDF XObjects are clipped, so ensure the same for png/svg
         .with_baseline(
             // TODO: impl From<...> for BaselinePos
             BaselinePos::from_value(Rel::from(Length::from(Em::new(0.2))).into_value())
