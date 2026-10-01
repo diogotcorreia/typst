@@ -1,7 +1,6 @@
 use ecow::{EcoString, eco_format};
 use typst_macros::cast;
 use typst_syntax::Span;
-use typst_utils::LazyHash;
 
 use crate::{
     diag::{At, Hint, HintedStrResult, SourceResult, StrResult, bail},
@@ -11,7 +10,7 @@ use crate::{
         OneOrMultiple, Packed, Repr, Smart, elem, scope,
     },
     introspection::{Introspector, Location, QueryLabelIntrospection},
-    layout::{Frame, Length, Rel, Sizing},
+    layout::{Length, Rel, Sizing},
     text::LocalName,
 };
 

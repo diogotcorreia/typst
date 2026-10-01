@@ -17,8 +17,8 @@ use typst_library::layout::{
 };
 use typst_library::math::EquationElem;
 use typst_library::model::{
-    ArtifactElem, ArtifactKind, CheckboxField, FieldAppearance, FieldAppearanceKind,
-    FormCheckboxField, FormElem, FormField, FormFieldMarker, PdfMarkerTag,
+    ArtifactElem, ArtifactKind, FieldAppearance, FieldAppearanceKind, FormCheckboxField,
+    FormElem, FormField, FormFieldMarker, PdfMarkerTag,
 };
 use typst_library::model::{
     Attribution, BibliographyElem, CiteElem, CiteGroup, CslIndentElem, CslLightElem,

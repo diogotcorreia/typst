@@ -1,11 +1,5 @@
-use std::cell::RefCell;
-use std::ops::DerefMut;
-use std::sync::Arc;
-
 use ecow::EcoString;
-use krilla::annotation::WidgetAnnotationKind;
 use krilla::configure::PdfVersion;
-use krilla::form::FieldKind;
 use krilla::geom as kg;
 use krilla::page::Page;
 use krilla::surface::Surface;

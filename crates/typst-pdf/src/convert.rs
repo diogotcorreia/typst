@@ -1,16 +1,12 @@
-use std::cell::RefCell;
-use std::sync::Arc;
-
 use comemo::Tracked;
 use ecow::{EcoString, EcoVec, eco_format};
 use indexmap::IndexMap;
-use krilla::annotation::WidgetAnnotationKind;
 use krilla::configure::validate::VersionedFeature;
 use krilla::configure::{PdfVersion, ValidationError, Validator, Validators};
 use krilla::destination::NamedDestination;
 use krilla::embed::EmbedError;
 use krilla::error::{KrillaError, LimitError};
-use krilla::form::{FieldKind, FieldTree, Node};
+use krilla::form::{FieldTree, Node};
 use krilla::geom::{PathBuilder, Rect};
 use krilla::page::{PageLabel, PageSettings};
 use krilla::pdf::PdfError;
@@ -168,7 +164,6 @@ fn convert_pages(gc: &mut GlobalContext, document: &mut Document) -> SourceResul
         );
 
         tags::page(gc, &mut surface, |gc, surface| {
-            dbg!(&typst_page.frame);
             handle_frame(
                 &mut fc,
                 &typst_page.frame,
@@ -405,8 +400,9 @@ pub(crate) fn handle_frame(
                 handle_image(gc, fc, image, *size, surface, *span)?;
             }
             FrameItem::Link(dest, size) => handle_link(fc, gc, dest, *size)?,
-            FrameItem::FormField(field, size) => {
-                handle_form_field(fc, gc, surface, field, *size)?;
+            FrameItem::FormField(field, ..) => {
+                // TODO: this probably shouldn't exist and should be moved to introspection perhaps?
+                handle_form_field(gc, field)?;
             }
             FrameItem::FieldAppearance(appearance, frame) => {
                 handle_field_appearance(fc, gc, surface, appearance, frame)?;

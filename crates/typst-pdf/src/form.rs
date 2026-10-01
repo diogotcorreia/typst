@@ -1,4 +1,3 @@
-use krilla::destination::XyzDestination;
 use krilla::form as kf;
 use krilla::form::FieldKind;
 use krilla::geom as kg;
@@ -7,13 +6,12 @@ use krilla::stream::Stream;
 use krilla::surface::Surface;
 use krilla::tagging::Identifier;
 use typst_library::diag::{At, ExpectInternal, SourceResult, bail};
-use typst_library::introspection::PagedPosition;
 use typst_library::layout::{Abs, Frame, Point, Sides, Size};
 use typst_library::model::{FieldAppearance, FieldAppearanceKind, FormField};
 use typst_syntax::Span;
 
-use crate::convert::{FrameContext, GlobalContext, PageIndexConverter, handle_frame};
-use crate::tags::{self, AnnotationId, GroupId};
+use crate::convert::{FrameContext, GlobalContext, handle_frame};
+use crate::tags::{self, AnnotationId};
 use crate::util::PointExt;
 
 pub(crate) struct Field {
@@ -156,11 +154,8 @@ pub(crate) fn handle_field_appearance(
 }
 
 pub(crate) fn handle_form_field(
-    fc: &mut FrameContext,
     gc: &mut GlobalContext,
-    surface: &mut Surface,
     form_field: &FormField,
-    size: Size,
 ) -> SourceResult<()> {
     match form_field {
         FormField::Checkbox(checkbox_field) => {
@@ -169,7 +164,7 @@ pub(crate) fn handle_form_field(
                 gc.fields.insert(checkbox_field.name.clone(), field);
             }
         }
-    };
+    }
 
     Ok(())
 }
@@ -198,21 +193,4 @@ fn bounding_box(fc: &FrameContext, size: Size) -> kg::Rect {
     }
 
     kg::Rect::from_ltrb(min_x, min_y, max_x, max_y).unwrap()
-}
-
-/// Turns a position link into a PDF XYZ destination.
-///
-/// - Takes into account page index conversion (if only part of the document is
-///   exported)
-/// - Consistently shifts the link by 10pt because the position of e.g.
-///   backlinks to footnotes is always at the baseline and if you link directly
-///   to it, the text will not be visible since it is right above.
-pub(crate) fn pos_to_xyz(
-    pic: &PageIndexConverter,
-    pos: PagedPosition,
-) -> Option<XyzDestination> {
-    let page_index = pic.pdf_page_index(pos.page.get() - 1)?;
-    let adjusted =
-        Point::new(pos.point.x, (pos.point.y - Abs::pt(10.0)).max(Abs::zero()));
-    Some(XyzDestination::new(page_index, adjusted.to_krilla()))
 }

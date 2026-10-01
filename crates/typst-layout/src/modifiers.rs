@@ -102,7 +102,6 @@ fn modify_frame(
     modifiers: &FrameModifiers,
     link_box_outset: Option<Sides<Abs>>,
 ) {
-    dbg!(&frame);
     if let Some(dest) = &modifiers.dest {
         let mut pos = Point::zero();
         let mut size = frame.size();
