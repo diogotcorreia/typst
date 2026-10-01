@@ -618,7 +618,11 @@ const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, styles| {
 
     Ok(FormFieldMarker::new(inner).pack().spanned(span).set(
         FormElem::field,
-        Some(FormField::Checkbox(CheckboxField { name: elem.name.clone() })),
+        Some(FormField::new_checkbox(
+            elem.name.clone(),
+            elem.checked.get(styles),
+            elem.read_only.get(styles),
+        )),
     ))
 };
 

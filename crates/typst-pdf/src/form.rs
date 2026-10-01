@@ -23,9 +23,11 @@ pub(crate) struct Field {
 impl Field {
     pub(crate) fn new(field: FormField) -> Self {
         let field = match field {
-            FormField::Checkbox(checkbox_field) => {
-                kf::FormField::checkbox(checkbox_field.name.to_string(), false)
-            }
+            FormField::Checkbox(checkbox_field) => kf::FormField::checkbox(
+                checkbox_field.name.to_string(),
+                checkbox_field.checked,
+            )
+            .with_read_only(checkbox_field.read_only),
         };
 
         Self { krilla_field: field.into() }

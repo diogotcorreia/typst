@@ -263,22 +263,18 @@ pub enum FormField {
     Checkbox(CheckboxField),
 }
 
-// impl FormField {
-//     pub fn new_checkbox(
-//         name: EcoString,
-//         on_content: Content,
-//         off_content: Content,
-//     ) -> Self {
-//         Self::Checkbox(CheckboxField { name, on_frame: todo!(), off_frame: todo!() })
-//     }
-// }
+impl FormField {
+    pub fn new_checkbox(name: EcoString, checked: bool, read_only: bool) -> Self {
+        Self::Checkbox(CheckboxField { name, checked, read_only })
+    }
+}
 
 /// A checkbox field.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CheckboxField {
     pub name: EcoString,
-    // pub on_frame: LazyHash<Frame>,
-    // pub off_frame: LazyHash<Frame>,
+    pub checked: bool,
+    pub read_only: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
