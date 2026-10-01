@@ -18,7 +18,7 @@ use typst_library::layout::{
 use typst_library::math::EquationElem;
 use typst_library::model::{
     ArtifactElem, ArtifactKind, CheckboxField, FieldAppearance, FieldAppearanceKind,
-    FormCheckboxField, FormElem, FormField, PdfMarkerTag,
+    FormCheckboxField, FormElem, FormField, FormFieldMarker, PdfMarkerTag,
 };
 use typst_library::model::{
     Attribution, BibliographyElem, CiteElem, CiteGroup, CslIndentElem, CslLightElem,
@@ -70,6 +70,7 @@ pub fn register(rules: &mut NativeRuleMap) {
     rules.register(Paged, TABLE_RULE);
     rules.register(Paged, TABLE_CELL_RULE);
     rules.register(Paged, FORM_RULE);
+    rules.register(Paged, FORM_FIELD_MARKER_RULE);
     rules.register(Paged, FORM_CHECKBOX_FIELD_RULE);
 
     // Text.
@@ -548,6 +549,9 @@ const TABLE_CELL_RULE: ShowFn<TableCell> = |elem, _, styles| {
 
 const FORM_RULE: ShowFn<FormElem> = |elem, _, _| Ok(elem.body.clone());
 
+const FORM_FIELD_MARKER_RULE: ShowFn<FormFieldMarker> =
+    |elem, _, _| Ok(elem.body.clone());
+
 const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, styles| {
     // TODO: this will probably be changed, but used as a PoC for now
     let span = elem.span();
@@ -598,13 +602,9 @@ const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, styles| {
                 }),
             ),
     ];
-    let states = Content::sequence(children).spanned(elem.span()).set(
-        FormElem::field,
-        Some(FormField::Checkbox(CheckboxField { name: elem.name.clone() })),
-    );
+    let states = Content::sequence(children).spanned(span);
 
-    // TODO: fix inset
-    Ok(BoxElem::new()
+    let inner = BoxElem::new()
         .with_width(width)
         .with_height(height)
         .with_baseline(
@@ -614,7 +614,12 @@ const FORM_CHECKBOX_FIELD_RULE: ShowFn<FormCheckboxField> = |elem, _, styles| {
         )
         .with_body(Some(states))
         .pack()
-        .spanned(elem.span()))
+        .spanned(span);
+
+    Ok(FormFieldMarker::new(inner).pack().spanned(span).set(
+        FormElem::field,
+        Some(FormField::Checkbox(CheckboxField { name: elem.name.clone() })),
+    ))
 };
 
 const SUB_RULE: ShowFn<SubElem> = |elem, _, styles| {

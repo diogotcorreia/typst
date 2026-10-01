@@ -1,8 +1,3 @@
-use std::cell::RefCell;
-use std::sync::Arc;
-
-use krilla::action::{Action, LinkAction};
-use krilla::annotation::{Target, WidgetAnnotationKind};
 use krilla::destination::XyzDestination;
 use krilla::form as kf;
 use krilla::form::FieldKind;
@@ -14,9 +9,7 @@ use krilla::tagging::Identifier;
 use typst_library::diag::{At, ExpectInternal, SourceResult, bail};
 use typst_library::introspection::PagedPosition;
 use typst_library::layout::{Abs, Frame, Point, Sides, Size};
-use typst_library::model::{
-    Destination, FieldAppearance, FieldAppearanceKind, FormField, ResolvedLink,
-};
+use typst_library::model::{FieldAppearance, FieldAppearanceKind, FormField};
 use typst_syntax::Span;
 
 use crate::convert::{FrameContext, GlobalContext, PageIndexConverter, handle_frame};
@@ -61,6 +54,7 @@ impl Field {
 
 #[derive(Debug)]
 pub(crate) struct WidgetAnnotation {
+    pub annotation_id: Option<AnnotationId>,
     pub bbox: kg::Rect,
     pub on_stream: Option<Stream>,
     pub off_stream: Option<Stream>,
@@ -68,7 +62,12 @@ pub(crate) struct WidgetAnnotation {
 
 impl WidgetAnnotation {
     pub fn new(bbox: kg::Rect) -> Self {
-        Self { bbox, on_stream: None, off_stream: None }
+        Self {
+            annotation_id: None,
+            bbox,
+            on_stream: None,
+            off_stream: None,
+        }
     }
 }
 
@@ -96,11 +95,54 @@ pub(crate) fn handle_field_appearance(
         builder.finish()
     };
 
+    let tag_group = if tags::disabled(gc) {
+        if gc.tags.in_tiling
+            && let Some(accessibility) = gc.options.validators().accessibility()
+        {
+            let validator = accessibility.as_str();
+            bail!(
+                Span::detached(),
+                "{validator} error: PDF artifacts may not contain form fields";
+                hint: "a form field was used within a tiling";
+            );
+        }
+
+        None
+    } else {
+        let (group_id, form_field) = gc
+            .tags
+            .tree
+            .parent_form_field()
+            .expect_internal("expected form field ancestor in logical tree")
+            .at(Span::detached())?;
+
+        if gc.tags.tree.parent_artifact().is_some() {
+            if let Some(accessibility) = gc.options.validators().accessibility() {
+                let validator = accessibility.as_str();
+                bail!(
+                    form_field.span(),
+                    "{validator} error: PDF artifacts may not contain form fields";
+                );
+            }
+
+            None
+        } else {
+            Some((group_id, form_field))
+        }
+    };
+
     let widget = fc.get_widget_annotation_mut(appearance.name.clone(), rect);
     match appearance.kind {
         FieldAppearanceKind::Single | FieldAppearanceKind::Off => {
             debug_assert!(widget.off_stream.is_none());
             widget.off_stream = Some(stream);
+
+            if let Some((group_id, _)) = tag_group {
+                let annot_id = gc.tags.annotations.reserve();
+                widget.annotation_id = Some(annot_id);
+                let group = gc.tags.tree.groups.get_mut(group_id);
+                group.push_annotation(annot_id);
+            }
         }
         FieldAppearanceKind::On => {
             debug_assert!(widget.on_stream.is_none());

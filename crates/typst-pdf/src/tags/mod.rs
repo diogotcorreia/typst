@@ -186,10 +186,15 @@ pub fn add_widget_annotations(
     annotations: impl Iterator<Item = (EcoString, WidgetAnnotation)>,
 ) {
     for (field, annot) in annotations {
-        gc.fields
+        let annot_id = annot.annotation_id;
+        let identifier = gc
+            .fields
             .get_mut(&field)
             .expect("could not find field for widget annotation")
             .insert_annotation(page, annot);
+        if let Some(annot_id) = annot_id {
+            gc.tags.annotations.init(annot_id, identifier);
+        }
     }
 }
 

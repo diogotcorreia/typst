@@ -4,11 +4,11 @@ use typst_syntax::Span;
 use typst_utils::LazyHash;
 
 use crate::{
-    diag::{At, Hint, HintedStrResult, SourceResult, StrResult},
+    diag::{At, Hint, HintedStrResult, SourceResult, StrResult, bail},
     engine::Engine,
     foundations::{
-        Array, Content, Dict, IntoValue, Label, NativeElement, OneOrMultiple, Packed,
-        Repr, Smart, elem, scope,
+        Args, Array, Construct, Content, Dict, IntoValue, Label, NativeElement,
+        OneOrMultiple, Packed, Repr, Smart, elem, scope,
     },
     introspection::{Introspector, Location, QueryLabelIntrospection},
     layout::{Frame, Length, Rel, Sizing},
@@ -292,4 +292,19 @@ pub enum FieldAppearanceKind {
     Single,
     On,
     Off,
+}
+
+/// An element that wraps all content that is the appearance of a form field.
+#[elem(Tagged, Construct)]
+pub struct FormFieldMarker {
+    /// The content.
+    #[internal]
+    #[required]
+    pub body: Content,
+}
+
+impl Construct for FormFieldMarker {
+    fn construct(_: &mut Engine, args: &mut Args) -> SourceResult<Content> {
+        bail!(args.span, "cannot be constructed manually");
+    }
 }
