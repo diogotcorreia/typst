@@ -6,10 +6,13 @@ use krilla::stream::Stream;
 use krilla::surface::Surface;
 use krilla::tagging::Identifier;
 use rustc_hash::FxHashMap;
+use std::collections::hash_map::Entry;
 use std::iter::Peekable;
 use typst_library::diag::{At, ExpectInternal, SourceResult, bail};
 use typst_library::layout::{Abs, Frame, Point, Sides, Size};
-use typst_library::model::{FieldAppearance, FieldAppearanceKind, FormField};
+use typst_library::model::{
+    FieldAppearance, FieldAppearanceKind, FormField, FormFieldKind,
+};
 use typst_syntax::Span;
 
 use crate::convert::{FrameContext, GlobalContext, handle_frame};
@@ -17,22 +20,22 @@ use crate::tags::{self, AnnotationId};
 use crate::util::PointExt;
 
 pub(crate) struct Field {
-    pub name: EcoString,
+    pub inner: FormField,
     pub krilla_field: kf::FieldKind,
 }
 
 impl Field {
     pub(crate) fn new(field: FormField) -> Self {
-        let full_name = field.name().clone();
-        let partial_name = full_name.rsplit('.').next().unwrap();
-        let field = match field {
-            FormField::Checkbox(checkbox_field) => {
+        let partial_name = field.name.rsplit('.').next().unwrap();
+        let krilla_field = match &field.kind {
+            FormFieldKind::Checkbox(checkbox_field) => {
                 kf::FormField::checkbox(partial_name.to_string(), checkbox_field.checked)
                     .with_read_only(checkbox_field.read_only)
+                    .into()
             }
         };
 
-        Self { name: full_name, krilla_field: field.into() }
+        Self { inner: field, krilla_field }
     }
 
     pub(crate) fn insert_annotation(
@@ -90,12 +93,13 @@ pub(crate) fn handle_field_appearance(
     let stream = {
         let mut builder = surface.stream_builder();
         let mut fc = FrameContext::new(None, body.size());
+        let bbox = kg::Rect::from_xywh(0.0, 0.0, rect.width(), rect.height()).unwrap();
         handle_frame(
             &mut fc,
             body,
             Sides::splat(Abs::zero()),
             None,
-            &mut builder.surface(),
+            &mut builder.surface_with_bbox(bbox),
             gc,
         )?;
 
@@ -164,12 +168,19 @@ pub(crate) fn handle_form_field(
     gc: &mut GlobalContext,
     form_field: &FormField,
 ) -> SourceResult<()> {
-    match form_field {
-        FormField::Checkbox(checkbox_field) => {
-            if !gc.fields.contains_key(&checkbox_field.name) {
-                let field = Field::new(form_field.clone());
-                gc.fields.insert(checkbox_field.name.clone(), field);
+    match gc.fields.entry(form_field.name.clone()) {
+        Entry::Occupied(existing) => {
+            if form_field.kind != existing.get().inner.kind {
+                bail!(
+                    form_field.span, "two fields share the same name with conflicting properties";
+                    hint: "change the name of one of the fields";
+                    hint: "alternatively, ensure the properties of both are the same";
+                    hint[existing.get().inner.span]: "the other file is here";
+                );
             }
+        }
+        Entry::Vacant(vacant_entry) => {
+            vacant_entry.insert(Field::new(form_field.clone()));
         }
     }
 
@@ -204,6 +215,7 @@ fn bounding_box(fc: &FrameContext, size: Size) -> kg::Rect {
 
 type FieldGroup = FxHashMap<EcoString, Node>;
 
+#[allow(clippy::large_enum_variant)]
 enum Node {
     Group(FieldGroup),
     Leaf(Field),
@@ -223,11 +235,11 @@ pub(crate) fn build_field_tree(gc: &mut GlobalContext) -> SourceResult<kf::Field
         let is_leaf = path.peek().is_none();
 
         if is_leaf {
-            let name = field.name.clone();
+            let name = field.inner.name.clone();
+            let span = field.inner.span;
             if fields.insert(path_segment.into(), Node::Leaf(field)).is_some() {
-                // TODO span?
                 bail!(
-                    Span::detached(), "there are two distinct form fields named `{name}`";
+                    span, "there are two distinct form fields named `{name}`";
                     hint: "this can happen if you have a field named `{name}` and another named `{name}.<something else>`"
                 )
             }
@@ -240,10 +252,9 @@ pub(crate) fn build_field_tree(gc: &mut GlobalContext) -> SourceResult<kf::Field
                     insert_into_tree(group, path, field)?;
                 }
                 Node::Leaf(field) => {
-                    let name = &field.name;
-                    // TODO span?
+                    let name = &field.inner.name;
                     bail!(
-                        Span::detached(), "there are two distinct form fields named `{name}`";
+                        field.inner.span, "there are two distinct form fields named `{name}`";
                         hint: "this can happen if you have a field named `{name}` and another named `{name}.<something else>`"
                     )
                 }
@@ -268,7 +279,7 @@ pub(crate) fn build_field_tree(gc: &mut GlobalContext) -> SourceResult<kf::Field
 
     let mut fields = FieldGroup::default();
     for field in std::mem::take(&mut gc.fields).into_values() {
-        let name = field.name.clone();
+        let name = field.inner.name.clone();
         let path = name.split('.').peekable();
         insert_into_tree(&mut fields, path, field)?;
     }

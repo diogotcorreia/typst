@@ -257,19 +257,29 @@ impl FormLabel {
 
 /// A form field.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum FormField {
+pub struct FormField {
+    pub name: EcoString,
+    pub kind: FormFieldKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum FormFieldKind {
     /// A checkbox.
     Checkbox(CheckboxField),
 }
 
 impl FormField {
-    pub fn new_checkbox(name: EcoString, checked: bool, read_only: bool) -> Self {
-        Self::Checkbox(CheckboxField { name, checked, read_only })
-    }
-
-    pub fn name(&self) -> &EcoString {
-        match self {
-            FormField::Checkbox(checkbox_field) => &checkbox_field.name,
+    pub fn new_checkbox(
+        span: Span,
+        name: EcoString,
+        checked: bool,
+        read_only: bool,
+    ) -> Self {
+        Self {
+            name,
+            kind: FormFieldKind::Checkbox(CheckboxField { checked, read_only }),
+            span,
         }
     }
 }
@@ -277,7 +287,6 @@ impl FormField {
 /// A checkbox field.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CheckboxField {
-    pub name: EcoString,
     pub checked: bool,
     pub read_only: bool,
 }

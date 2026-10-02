@@ -505,8 +505,8 @@ pub enum FrameItem {
     Image(Image, Size, Span),
     /// An internal or external link to a destination.
     Link(Destination, Size),
-    /// An interactive form field.
-    FormField(FormField, Size),
+    /// An interactive form field. Has no visible content.
+    FormField(FormField),
     /// A representation of an interactive form field.
     FieldAppearance(FieldAppearance, Frame),
     /// An introspectable element that produced something within this frame.
@@ -521,7 +521,7 @@ impl Debug for FrameItem {
             Self::Shape(shape, _) => write!(f, "{shape:?}"),
             Self::Image(image, _, _) => write!(f, "{image:?}"),
             Self::Link(dest, _) => write!(f, "Link({dest:?})"),
-            Self::FormField(field, _) => write!(f, "FormField({field:?})"),
+            Self::FormField(field) => write!(f, "FormField({field:?})"),
             Self::FieldAppearance(appearance, frame) => {
                 write!(f, "FieldAppearance({appearance:?}, {frame:?})")
             }

@@ -24,7 +24,7 @@ pub struct FrameModifiers {
     /// A destination to link to.
     dest: Option<Destination>,
     /// A form field to create.
-    field: Option<FormField>,
+    field: Option<FormField>, // TODO: is there a better place to put this?
     /// A form field appearance.
     field_appearance: Option<FieldAppearance>,
     /// Whether the contents of the frame should be hidden.
@@ -118,8 +118,7 @@ fn modify_frame(
 
     if let Some(field) = &modifiers.field {
         let pos = Point::zero();
-        let size = frame.size();
-        frame.prepend(pos, FrameItem::FormField(field.clone(), size));
+        frame.push(pos, FrameItem::FormField(field.clone()));
     }
 
     if modifiers.hidden {
