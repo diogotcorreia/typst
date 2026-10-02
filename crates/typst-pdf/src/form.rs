@@ -1,10 +1,12 @@
+use ecow::EcoString;
 use krilla::form as kf;
-use krilla::form::FieldKind;
 use krilla::geom as kg;
 use krilla::page::Page;
 use krilla::stream::Stream;
 use krilla::surface::Surface;
 use krilla::tagging::Identifier;
+use rustc_hash::FxHashMap;
+use std::iter::Peekable;
 use typst_library::diag::{At, ExpectInternal, SourceResult, bail};
 use typst_library::layout::{Abs, Frame, Point, Sides, Size};
 use typst_library::model::{FieldAppearance, FieldAppearanceKind, FormField};
@@ -15,20 +17,22 @@ use crate::tags::{self, AnnotationId};
 use crate::util::PointExt;
 
 pub(crate) struct Field {
-    pub krilla_field: FieldKind,
+    pub name: EcoString,
+    pub krilla_field: kf::FieldKind,
 }
 
 impl Field {
     pub(crate) fn new(field: FormField) -> Self {
+        let full_name = field.name().clone();
+        let partial_name = full_name.rsplit('.').next().unwrap();
         let field = match field {
-            FormField::Checkbox(checkbox_field) => kf::FormField::checkbox(
-                checkbox_field.name.to_string(),
-                checkbox_field.checked,
-            )
-            .with_read_only(checkbox_field.read_only),
+            FormField::Checkbox(checkbox_field) => {
+                kf::FormField::checkbox(partial_name.to_string(), checkbox_field.checked)
+                    .with_read_only(checkbox_field.read_only)
+            }
         };
 
-        Self { krilla_field: field.into() }
+        Self { name: full_name, krilla_field: field.into() }
     }
 
     pub(crate) fn insert_annotation(
@@ -37,8 +41,8 @@ impl Field {
         annotation: WidgetAnnotation,
     ) -> Identifier {
         match &mut self.krilla_field {
-            FieldKind::PushButton(..) => todo!(),
-            FieldKind::Checkbox(form_field) => {
+            kf::FieldKind::PushButton(..) => todo!(),
+            kf::FieldKind::Checkbox(form_field) => {
                 let widget = form_field.new_widget(
                     annotation.bbox,
                     annotation.off_stream.expect("checkbox has no off appearance"),
@@ -47,7 +51,7 @@ impl Field {
 
                 page.add_widget_annotation(form_field, widget.into())
             }
-            FieldKind::Radio(..) => todo!(),
+            kf::FieldKind::Radio(..) => todo!(),
         }
     }
 }
@@ -193,4 +197,78 @@ fn bounding_box(fc: &FrameContext, size: Size) -> kg::Rect {
     }
 
     kg::Rect::from_ltrb(min_x, min_y, max_x, max_y).unwrap()
+}
+
+type FieldGroup = FxHashMap<EcoString, Node>;
+
+enum Node {
+    Group(FieldGroup),
+    Leaf(Field),
+}
+
+pub(crate) fn build_field_tree(gc: &mut GlobalContext) -> SourceResult<kf::FieldTree> {
+    fn insert_into_tree<'a, I>(
+        fields: &mut FieldGroup,
+        mut path: Peekable<I>,
+        field: Field,
+    ) -> SourceResult<()>
+    where
+        I: Iterator<Item = &'a str>,
+    {
+        let path_segment =
+            path.next().expect("there is always one path segment when splitting");
+        let is_leaf = path.peek().is_none();
+
+        if is_leaf {
+            let name = field.name.clone();
+            if fields.insert(path_segment.into(), Node::Leaf(field)).is_some() {
+                // TODO span?
+                bail!(
+                    Span::detached(), "there are two distinct form fields named `{name}`";
+                    hint: "this can happen if you have a field named `{name}` and another named `{name}.<something else>`"
+                )
+            }
+        } else {
+            let node = fields
+                .entry(path_segment.into())
+                .or_insert_with(|| Node::Group(FieldGroup::default()));
+            match node {
+                Node::Group(group) => {
+                    insert_into_tree(group, path, field)?;
+                }
+                Node::Leaf(field) => {
+                    let name = &field.name;
+                    // TODO span?
+                    bail!(
+                        Span::detached(), "there are two distinct form fields named `{name}`";
+                        hint: "this can happen if you have a field named `{name}` and another named `{name}.<something else>`"
+                    )
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn to_krilla_tree(group: FieldGroup) -> Vec<kf::Node> {
+        group
+            .into_iter()
+            .map(|(name, node)| match node {
+                Node::Group(group) => {
+                    let fields = to_krilla_tree(group);
+                    kf::Node::Group(kf::FieldGroup { name: name.to_string(), fields })
+                }
+                Node::Leaf(field) => kf::Node::Leaf(field.krilla_field),
+            })
+            .collect()
+    }
+
+    let mut fields = FieldGroup::default();
+    for field in std::mem::take(&mut gc.fields).into_values() {
+        let name = field.name.clone();
+        let path = name.split('.').peekable();
+        insert_into_tree(&mut fields, path, field)?;
+    }
+
+    Ok(kf::FieldTree { fields: to_krilla_tree(fields) })
 }

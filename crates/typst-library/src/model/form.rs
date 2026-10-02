@@ -266,6 +266,12 @@ impl FormField {
     pub fn new_checkbox(name: EcoString, checked: bool, read_only: bool) -> Self {
         Self::Checkbox(CheckboxField { name, checked, read_only })
     }
+
+    pub fn name(&self) -> &EcoString {
+        match self {
+            FormField::Checkbox(checkbox_field) => &checkbox_field.name,
+        }
+    }
 }
 
 /// A checkbox field.

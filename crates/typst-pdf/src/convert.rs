@@ -6,7 +6,6 @@ use krilla::configure::{PdfVersion, ValidationError, Validator, Validators};
 use krilla::destination::NamedDestination;
 use krilla::embed::EmbedError;
 use krilla::error::{KrillaError, LimitError};
-use krilla::form::{FieldTree, Node};
 use krilla::geom::{PathBuilder, Rect};
 use krilla::page::{PageLabel, PageSettings};
 use krilla::pdf::PdfError;
@@ -30,7 +29,9 @@ use typst_library::visualize::{Geometry, Paint, SpotColorantName};
 use typst_syntax::Span;
 
 use crate::attach::attach_files;
-use crate::form::{Field, WidgetAnnotation, handle_field_appearance, handle_form_field};
+use crate::form::{
+    Field, WidgetAnnotation, build_field_tree, handle_field_appearance, handle_form_field,
+};
 use crate::image::handle_image;
 use crate::link::{LinkAnnotation, handle_link};
 use crate::metadata::build_metadata;
@@ -96,11 +97,7 @@ pub fn convert(
     document.set_metadata(build_metadata(&gc, doc_lang));
     document.set_tag_tree(tree);
 
-    let mut field_tree = FieldTree::new();
-    for field in std::mem::take(&mut gc.fields).into_values() {
-        field_tree.push(Node::Leaf(field.krilla_field));
-    }
-    document.set_field_tree(field_tree);
+    document.set_field_tree(build_field_tree(&mut gc)?);
 
     finish(document, gc)
 }
