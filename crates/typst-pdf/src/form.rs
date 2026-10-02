@@ -52,6 +52,9 @@ impl Field {
                 page.add_widget_annotation(form_field, widget.into())
             }
             kf::FieldKind::Radio(..) => todo!(),
+            kf::FieldKind::Text(..) => todo!(),
+            kf::FieldKind::ListBox(..) => todo!(),
+            kf::FieldKind::ComboBox(..) => todo!(),
         }
     }
 }
