@@ -394,7 +394,7 @@ cast! {
         .into_iter()
         .enumerate()
         .map(|(i, v)| Ok(ChoiceOption::new(
-            v.clone().cast::<EcoString>().hint(str_hint_helper(i, &v))?,
+            v.clone().cast::<EcoString>().hint(opt_hint_helper(i, &v))?,
             Smart::Auto,
         )))
         .collect::<HintedStrResult<_>>()?),
@@ -402,13 +402,13 @@ cast! {
         .into_iter()
         .enumerate()
         .map(|(i, (k, v))| Ok(ChoiceOption::new(
-            k.clone().into_value().cast::<EcoString>().hint(str_hint_helper(i, &k))?,
-            v.cast::<Smart<EcoString>>().hint(str_hint_helper(i, &k))?,
+            k.clone().into_value().cast::<EcoString>().hint(opt_hint_helper(i, &k))?,
+            v.cast::<Smart<EcoString>>().hint(opt_hint_helper(i, &k))?,
         )))
         .collect::<HintedStrResult<_>>()?),
 }
 
-fn str_hint_helper(index: usize, key: &impl Repr) -> EcoString {
+fn opt_hint_helper(index: usize, key: &impl Repr) -> EcoString {
     eco_format!("occurred in option at index {index} (`{}`)", key.repr())
 }
 
