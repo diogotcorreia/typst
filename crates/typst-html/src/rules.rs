@@ -4,7 +4,7 @@ use std::sync::Arc;
 use az::SaturatingAs;
 use comemo::Track;
 use ecow::{EcoVec, eco_format};
-use typst_library::diag::{At, bail, warning};
+use typst_library::diag::{At, WarningSink, bail, warning};
 use typst_library::foundations::{
     Content, Context, IntoValue, NativeElement, NativeRuleMap, Repr, Selector,
     SequenceElem, ShowFn, Smart, StyleChain, Target,
@@ -13,7 +13,7 @@ use typst_library::introspection::{
     Counter, DocumentIntrospection, Locator, QueryIntrospection,
 };
 use typst_library::layout::resolve::{Cell, CellGrid, Entry, Header};
-use typst_library::layout::{BlockElem, HElem, OuterVAlignment, Sizing};
+use typst_library::layout::{BlockElem, HElem, Length, OuterVAlignment, Rel, Sizing};
 use typst_library::math::EquationElem;
 use typst_library::math::ir::resolve_equation;
 use typst_library::model::{
@@ -747,18 +747,7 @@ const FORM_BUTTON_RULE: ShowFn<FormButtonElem> = |elem, engine, styles| {
     }
 
     let mut css = css::Properties::build(engine.binding_guard(elem.span()));
-    // TODO: Exclude in semantic profile?
-    match elem.width.get(styles) {
-        Sizing::Auto => {}
-        Sizing::Rel(rel) => css.push("width", rel),
-        Sizing::Fr(_) => {}
-    }
-
-    // TODO: Exclude in semantic profile?
-    match elem.height.get(styles) {
-        Smart::Auto => {}
-        Smart::Custom(rel) => css.push("height", rel),
-    }
+    set_css_width_height(&mut css, elem.width.get(styles), elem.height.get(styles));
 
     Ok(HtmlElem::new(tag::button)
         .with_attrs(attributes)
@@ -784,18 +773,7 @@ const FORM_CHECKBOX_RULE: ShowFn<FormCheckboxElem> = |elem, engine, styles| {
     }
 
     let mut css = css::Properties::build(engine.binding_guard(elem.span()));
-    // TODO: Exclude in semantic profile?
-    match elem.width.get(styles) {
-        Sizing::Auto => {}
-        Sizing::Rel(rel) => css.push("width", rel),
-        Sizing::Fr(_) => {}
-    }
-
-    // TODO: Exclude in semantic profile?
-    match elem.height.get(styles) {
-        Smart::Auto => {}
-        Smart::Custom(rel) => css.push("height", rel),
-    }
+    set_css_width_height(&mut css, elem.width.get(styles), elem.height.get(styles));
 
     Ok(HtmlElem::new(tag::input)
         .with_attrs(attributes)
@@ -858,18 +836,7 @@ const FORM_RADIO_RULE: ShowFn<FormRadioElem> = |elem, engine, styles| {
     }
 
     let mut css = css::Properties::build(engine.binding_guard(elem.span()));
-    // TODO: Exclude in semantic profile?
-    match elem.width.get(styles) {
-        Sizing::Auto => {}
-        Sizing::Rel(rel) => css.push("width", rel),
-        Sizing::Fr(_) => {}
-    }
-
-    // TODO: Exclude in semantic profile?
-    match elem.height.get(styles) {
-        Smart::Auto => {}
-        Smart::Custom(rel) => css.push("height", rel),
-    }
+    set_css_width_height(&mut css, elem.width.get(styles), elem.height.get(styles));
 
     Ok(HtmlElem::new(tag::input)
         .with_attrs(attributes)
@@ -914,18 +881,7 @@ const FORM_TEXTBOX_RULE: ShowFn<FormTextboxElem> = |elem, engine, styles| {
     }
 
     let mut css = css::Properties::build(engine.binding_guard(span));
-    // TODO: Exclude in semantic profile?
-    match elem.width.get(styles) {
-        Sizing::Auto => {}
-        Sizing::Rel(rel) => css.push("width", rel),
-        Sizing::Fr(_) => {}
-    }
-
-    // TODO: Exclude in semantic profile?
-    match elem.height.get(styles) {
-        Smart::Auto => {}
-        Smart::Custom(rel) => css.push("height", rel),
-    }
+    set_css_width_height(&mut css, elem.width.get(styles), elem.height.get(styles));
 
     let is_textarea = elem.multiline.get(styles);
     if is_textarea {
@@ -1003,18 +959,7 @@ const FORM_CHOICE_RULE: ShowFn<FormChoiceElem> = |elem, engine, styles| {
         .collect();
 
     let mut css = css::Properties::build(engine.binding_guard(span));
-    // TODO: Exclude in semantic profile?
-    match elem.width.get(styles) {
-        Sizing::Auto => {}
-        Sizing::Rel(rel) => css.push("width", rel),
-        Sizing::Fr(_) => {}
-    }
-
-    // TODO: Exclude in semantic profile?
-    match elem.height.get(styles) {
-        Smart::Auto => {}
-        Smart::Custom(rel) => css.push("height", rel),
-    }
+    set_css_width_height(&mut css, elem.width.get(styles), elem.height.get(styles));
 
     Ok(HtmlElem::new(tag::select)
         .with_attrs(attributes)
@@ -1044,6 +989,26 @@ const FORM_LABEL_RULE: ShowFn<FormLabelElem> = |elem, engine, _| {
         .pack()
         .spanned(span))
 };
+
+/// Set the width and height css attributes on a properties builder.
+fn set_css_width_height<S: WarningSink>(
+    css: &mut css::PropertiesBuilder<S>,
+    width: Sizing,
+    height: Smart<Rel<Length>>,
+) {
+    // TODO: Exclude in semantic profile?
+    match width {
+        Sizing::Auto => {}
+        Sizing::Rel(rel) => css.push("width", rel),
+        Sizing::Fr(_) => {}
+    }
+
+    // TODO: Exclude in semantic profile?
+    match height {
+        Smart::Auto => {}
+        Smart::Custom(rel) => css.push("height", rel),
+    }
+}
 
 const SUB_RULE: ShowFn<SubElem> =
     |elem, _, _| Ok(HtmlElem::new(tag::sub).with_body(Some(elem.body.clone())).pack());
