@@ -805,11 +805,18 @@ const FORM_RADIO_GROUP_RULE: ShowFn<FormRadioGroup> = |elem, engine, styles| {
     }
 
     let selected = elem.resolve_selected_early(engine, styles);
-    engine.delay(selected.map(|_| ()));
+    engine.delay(selected);
+
+    let legend = elem.title.get_cloned(styles).map(|title| {
+        let span = title.span();
+        HtmlElem::new(tag::legend).with_body(Some(title)).pack().spanned(span)
+    });
+
+    let body = Content::sequence([legend, Some(elem.body.clone())].into_iter().flatten());
 
     Ok(HtmlElem::new(tag::fieldset)
         .with_attrs(attributes)
-        .with_body(Some(elem.body.clone()))
+        .with_body(Some(body))
         .pack()
         .spanned(span))
 };
