@@ -752,7 +752,8 @@ fn convert_validation_error(
             let span = to_span(*loc);
             error!(
                 span, "{prefix} missing alt name";
-                hint: "make sure your form fields have an alt name";
+                hint: "make sure your form fields have a label";
+                hint: "add a `#form.label` that points to this field";
             )
         }
         ValidationError::NoDocumentLanguage => error!(
