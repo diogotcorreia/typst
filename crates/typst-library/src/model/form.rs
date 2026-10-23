@@ -235,6 +235,11 @@ pub struct FormRadioGroup {
     /// Whether this radio group is required and one of the options must be selected.
     pub required: bool,
 
+    /// The title of this radio group.
+    /// In PDF, this is also used as the alt text for this field.
+    /// In HTML, this becomes the `<legend>` element of the `<fieldset>`.
+    pub title: Option<Content>,
+
     /// Whether this radio-group is read-only and its value cannot be changed.
     pub disabled: bool,
 }
