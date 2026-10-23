@@ -1,3 +1,4 @@
+use az::SaturatingAs;
 use ecow::{EcoString, eco_format};
 use krilla::action::{Action, ResetFormAction};
 use krilla::annotation as ka;
@@ -126,8 +127,8 @@ impl Field {
             let multiline = textbox.multiline.get(styles);
             let required = textbox.required.get(styles);
             let read_only = textbox.disabled.get(styles);
-            // TODO: checked cast?
-            let max_length = textbox.max_length.get(styles).map(|i| i as i32);
+            let max_length =
+                textbox.max_length.get(styles).map(|i| i.saturating_as::<i32>());
             let fixed_width = textbox.fixed_width.get(styles);
             let value = textbox.value.get_ref(styles);
 
