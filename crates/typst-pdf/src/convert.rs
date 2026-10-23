@@ -754,6 +754,7 @@ fn convert_validation_error(
                 span, "{prefix} missing alt name";
                 hint: "make sure your form fields have a label";
                 hint: "add a `#form.label` that points to this field";
+                hint: "for `#form.radio-group`, you can set the `title` property instead";
             )
         }
         ValidationError::NoDocumentLanguage => error!(

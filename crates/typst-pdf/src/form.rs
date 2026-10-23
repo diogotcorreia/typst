@@ -106,7 +106,14 @@ impl Field {
 
             let krilla_field = kf::FormField::radio(partial_name, selected.clone())
                 .with_location(Some(span.into_raw()))
-                .with_alt_name(get_alt_text())
+                .with_alt_name(
+                    radio_group
+                        .title
+                        .get_ref(styles)
+                        .as_ref()
+                        .map(|elem| elem.plain_text().to_string())
+                        .unwrap_or_else(get_alt_text),
+                )
                 .with_default_value(selected)
                 .with_required(required)
                 .with_read_only(read_only);

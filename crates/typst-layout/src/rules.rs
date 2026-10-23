@@ -601,7 +601,15 @@ const FORM_RADIO_GROUP_RULE: ShowFn<FormRadioGroup> = |elem, _, styles| {
         bail!(span, "radio group must be placed inside a `#form[...]` element");
     }
 
-    Ok(elem.body.clone())
+    let legend = elem.title.get_cloned(styles).map(|title| ParElem::new(title).pack());
+
+    let body = Content::sequence([legend, Some(elem.body.clone())].into_iter().flatten());
+
+    Ok(BlockElem::new()
+        .with_stroke(Sides::splat(Some(Some(Stroke::default()))))
+        .with_inset(Sides::splat(Some(Abs::pt(5.0).into())))
+        .with_body(Some(BlockBody::Content(body)))
+        .pack())
 };
 
 const FORM_RADIO_RULE: ShowFn<FormRadioButton> = |elem, _, styles| {
