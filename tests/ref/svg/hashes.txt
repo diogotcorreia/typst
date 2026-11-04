@@ -290,6 +290,8 @@ a81b957f0011be890b17f98173831859 footnote-ref-in-footnote
 0c1d0ea8569b0ad86b0437ed02689c88 footnote-space-collapsing
 6d65ff73042df0b525cf13a51a48b9a5 footnote-styling
 e1dd84a3bbe74f2867d4568997582423 for-loop-basic
+0e8a8c0cc26a7c94a9c30a01726c480d form-basic
+8a4ae869329b9f44e179d56dba50a411 form-textbox-placeholder-paged
 c1e5314f6ce95e23788bdeeda5895aa4 gradient-angle-rotation-aspect
 ece421a0356d9ef433bbda84c5da0021 gradient-conic
 783249d0fa64384b3780ded998cb32f0 gradient-conic-angled
