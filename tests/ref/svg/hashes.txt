@@ -291,7 +291,14 @@ a81b957f0011be890b17f98173831859 footnote-ref-in-footnote
 6d65ff73042df0b525cf13a51a48b9a5 footnote-styling
 e1dd84a3bbe74f2867d4568997582423 for-loop-basic
 0e8a8c0cc26a7c94a9c30a01726c480d form-basic
+77283d2a3e0f145ff452b78906ec0341 form-choice-non-latin-options
+e1bcc1612cb8adf6f5b1761ee1650679 form-place-circle-on-textbox
+1857a7c45a3ad2fa0eb36c22f570f287 form-radio-group-non-latin-values
+5814cdd39ac2728d59985d301c7c2813 form-textbox-auto-default-font
+591dc91e76a3011ec454292feefe336b form-textbox-chinese-value
+f3b204e65a5b4c52aca56afb3b0fcbbf form-textbox-hebrew-value
 8a4ae869329b9f44e179d56dba50a411 form-textbox-placeholder-paged
+1d043e98de74dceb0a61a8247b38583c form-widget-show-rule
 c1e5314f6ce95e23788bdeeda5895aa4 gradient-angle-rotation-aspect
 ece421a0356d9ef433bbda84c5da0021 gradient-conic
 783249d0fa64384b3780ded998cb32f0 gradient-conic-angled

@@ -320,3 +320,157 @@
   // Hint: 4-53 property not supported in this export format
   #form.textbox(placeholder: "foobar", width: 100pt)
 ]
+
+--- form-place-circle-on-textbox paged ---
+// TODO: needs fixing, probably png and svg export should match pdf
+#form[
+  #form.textbox(width: 100pt, value: "foobar foobar")
+  #place(dy: -20pt, circle(fill: red))
+]
+
+--- form-textbox-chinese-value paged ---
+#form[
+  #form.textbox(value: "分别设置", width: 100pt)
+]
+
+--- form-textbox-hebrew-value paged ---
+#form[
+  #form.textbox(value: "שנקבעו", width: 100pt)
+]
+
+--- form-choice-non-latin-options paged ---
+#form[
+  #let options = (
+    "foo": "bar",
+    "分别": "设置",
+    "שנק": "בעו",
+  )
+  #form.choice(options: options, value: "分别")
+  #form.choice(multiple: true, options: options, value: ("foo", "שנק"))
+]
+
+--- form-radio-group-non-latin-values paged ---
+#form[
+  #form.radio-group(selected: <opt-2>)[
+    #form.radio(value: "foo")
+    #form.radio(value: "分别") <opt-2>
+    #form.radio(value: "שנק")
+  ]
+]
+
+--- form-textbox-auto-default-font paged ---
+// Check that the most similar standard font is chosen based on the current font.
+// NOTE: The resulting PDF needs to be manually checked.
+
+#form[
+  #set form.textbox(width: 100pt, value: "Lorem Ipsum")
+
+  #set text(font: "Roboto Flex")
+  #set text(weight: "regular", style: "normal")
+  #form.textbox() // Helvetica
+  #set text(weight: "bold", style: "normal")
+  #form.textbox() // Helvetica Bold
+  #set text(weight: "regular", style: "italic")
+  #form.textbox() // Helvetica Italic
+  #set text(weight: "bold", style: "italic")
+  #form.textbox() // Helvetica BoldItalic
+
+  #set text(font: "Source Serif 4")
+  #set text(weight: "regular", style: "normal")
+  #form.textbox() // Times Roman
+  #set text(weight: "bold", style: "normal")
+  #form.textbox() // Times Bold
+  #set text(weight: "regular", style: "italic")
+  #form.textbox() // Times Italic
+  #set text(weight: "bold", style: "italic")
+  #form.textbox() // Times BoldItalic
+
+  #set text(font: "DejaVu Sans Mono")
+  #set text(weight: "regular", style: "normal")
+  #form.textbox() // Courier
+  #set text(weight: "bold", style: "normal")
+  #form.textbox() // Courier Bold
+  #set text(weight: "regular", style: "italic")
+  #form.textbox() // Courier Italic
+  #set text(weight: "bold", style: "italic")
+  #form.textbox() // Courier BoldItalic
+]
+
+--- form-widget-show-rule paged ---
+#form[
+  #show form.button: it => {
+    // Replace the default rect with something else
+    // Set different appearances depending on interactive state
+    show form.widget.where(state: "normal"): ellipse(fill: red, it.body)
+    show form.widget.where(state: "hovered"): ellipse(fill: purple, it.body)
+    show form.widget.where(state: "down"): ellipse(fill: yellow, it.body)
+
+    it
+  }
+
+  #form.button[Reset form]
+
+  #show form.checkbox: it => {
+    // Set different appearances depending on interactive state and whether it is checked
+    show form.widget.where(checked: false, state: "normal"): set rect(fill: red)
+    show form.widget.where(checked: true, state: "normal"): set rect(fill: green)
+    show form.widget.where(checked: false, state: "hovered"): set rect(fill: purple)
+    show form.widget.where(checked: true, state: "hovered"): set rect(fill: teal)
+    show form.widget.where(state: "down"): set rect(fill: yellow)
+
+    box(it)
+  }
+
+  #form.checkbox() <checkbox-1>
+  #form.label(<checkbox-1>)[Foo]
+
+  #form.checkbox(checked: true) <checkbox-2>
+  #form.label(<checkbox-2>)[Bar]
+
+  #show form.radio: it => {
+    // Replace widget with a rect instead of circle
+    set rect(width: 100%, height: 100%, inset: 0.2em)
+    show form.widget.where(checked: false): rect[]
+    show form.widget.where(checked: true): rect(rect(fill: black))
+
+    box(it)
+  }
+
+  #form.radio-group(selected: <radio-2>)[
+    #form.radio() <radio-1>
+    #form.label(<radio-1>)[Foo]
+
+    #form.radio() <radio-2>
+    #form.label(<radio-2>)[Bar]
+  ]
+
+  #show form.textbox: it => {
+    // Change text color (readers should then use it when editing the field too)
+    set text(fill: blue)
+    show form.widget: it => {
+      set rect(stroke: 1pt + gradient.linear(red, green), outset: -1pt)
+      // TODO: align doesn't work
+      align(right, it)
+    }
+    show form.cursor: it => {
+      // It is possible to change the text here in a way that does not match the value.
+      // Readers might then wrongly assume this is the actual value, however.
+      show "foobar": [barfoo #emoji.face]
+      it
+    }
+    it
+  }
+
+  #form.textbox(width: 100pt, value: "foobar")
+
+  #let options = ("foo", "bar", "baz")
+
+  #show form.choice: it => {
+    // Replace the arrow on the right side with an emoji
+    show sym.triangle.filled.small.b: emoji.arrow.b.filled
+
+    rect(stroke: (bottom: 0.5pt, rest: none), inset: 0pt, it)
+  }
+
+  #form.choice(options: options, value: "foo")
+]

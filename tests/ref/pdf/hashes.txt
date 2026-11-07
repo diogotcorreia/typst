@@ -293,8 +293,15 @@ c81f1e27efaf7ec6f4be4fa1df909acb footnote-space-collapsing
 a06aab3d3484f5fb88103db01e5e0654 footnote-styling
 675bce541a95b31c93fec12031313c40 for-loop-basic
 32902492c9487d4bcd3e0a0ae04f9c60 form-basic
+fe4e86d7617c57ab17aa0d5acb612db7 form-choice-non-latin-options
+c18e00ab960e0b903d5ea81e952d2482 form-place-circle-on-textbox
+c983ccb8c844c2e249a769bcff074e1a form-radio-group-non-latin-values
 4cde7f0a78b62175ab50ec195e724370 form-target-warning-content-type-pdf
+539032cae933cc9a9984b58951f722c3 form-textbox-auto-default-font
+3ac35c8f2c5f1b3e232e1c636119d014 form-textbox-chinese-value
+8d695503212c509a8fa92c087b2ae2af form-textbox-hebrew-value
 88a8c43c166131c313a60021f01e57f1 form-textbox-placeholder-paged
+b7831ddc8038feca60fe84c797a3a6f3 form-widget-show-rule
 1530bbbbbfc94e0fdb6c830d2ae4b602 gradient-angle-rotation-aspect
 8b2684981c2ac55a162a57fcd8ce35be gradient-conic
 815b11a1b4307f59e9ff402c67613cbb gradient-conic-angled
