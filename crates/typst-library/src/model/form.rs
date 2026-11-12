@@ -34,10 +34,8 @@ use crate::visualize::{CircleElem, Paint, RectElem};
 /// @form.radio-group[radio buttons], @form.textbox[textboxes], @form.choice[dropdowns],
 /// and @form.choice[listboxes].
 /// When exporting to PDF, signature fields are also supported.
-/// /*
 /// For a hands-on explanation of all the ways you can use and customize form fields
-/// in Typst, check out the Form Guide.
-/// */
+/// in Typst, check out the @guides:forms[Form Guide].
 ///
 /// All form fields in a Typst document must be enclosed within a @form element.
 ///
@@ -1277,7 +1275,8 @@ fn labelable_element_selector() -> &'static Selector {
 /// This element cannot be constructed manually and is part of the default
 /// show rule for each form field.
 ///
-/// TODO: link to style guide
+/// Further information can be found in the
+/// @guides:forms:styling[Styling section of the Forms Guide].
 #[elem(name = "widget", since = "unreleased", Construct)]
 pub struct FormWidget {
     /// Whether the form field is checked.
@@ -1320,7 +1319,8 @@ pub enum WidgetState {
 /// A cursor element can only be used inside the show rule of
 /// a textbox.
 ///
-/// // TODO link to styling guide
+/// Further information can be found in the
+/// @guides:forms:textbox[Styling Textboxes section of the Forms Guide].
 #[elem(name = "cursor", since = "unreleased")]
 pub struct FormCursor {}
 
