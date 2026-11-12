@@ -24,7 +24,119 @@ use crate::introspection::{
 use crate::layout::{Abs, Frame, Length, Rel, Sides, Size, Sizing};
 use crate::visualize::{CircleElem, Paint, RectElem};
 
-/// TODO: docs
+/// A form with interactive and fillable fields.
+///
+/// Forms fields provide a way for users to users to interact with your document.
+/// For example, a user can fill out their name on a textbox
+/// or indicate their dietary restrictions using checkboxes. // TODO better examples?
+/// Typst supports many field types across both PDF and HTML,
+/// such as @form.button[buttons], @form.checkbox[checkboxes],
+/// @form.radio-group[radio buttons], @form.textbox[textboxes], @form.choice[dropdowns],
+/// and @form.choice[listboxes].
+/// When exporting to PDF, signature fields are also supported.
+/// /*
+/// For a hands-on explanation of all the ways you can use and customize form fields
+/// in Typst, check out the Form Guide.
+/// */
+///
+/// All form fields in a Typst document must be enclosed within a @form element.
+///
+/// = Example <example>
+/// The example below demonstrates creating a simple form with various form fields.
+/// However, this example and the other ones on this page are not interactive.
+///
+/// ```example
+/// #form[
+///   #form.label(<name>)[Name:]
+///   #form.textbox() <name>
+///
+///   Food preferences:
+///   #grid(
+///     columns: 2,
+///     inset: 0.2em,
+///     align: horizon,
+///     [#form.checkbox() <meat>],
+///     form.label(<meat>)[Meat],
+///     [#form.checkbox() <vegetarian>],
+///     form.label(<vegetarian>)[Vegetarian],
+///     [#form.checkbox() <vegan>],
+///     form.label(<vegan>)[Vegan],
+///     [#form.checkbox() <lactose>],
+///     form.label(<lactose>)[Lactose-free],
+///     [#form.checkbox() <gluten>],
+///     form.label(<gluten>)[Gluten-free],
+///   )
+/// ]
+/// ```
+///
+/// = Accessibility <accessibility>
+///
+/// Form fields need extra information to be properly consumed by users
+/// of Assistive Technology (AT).
+/// You can describe a form field via the @form.label element, which is
+/// visible to sighted users and announced for users of AT.
+/// We strongly recommend that all fields have an associated @form.label.
+///
+/// Furthermore, the @form.radio-group[radio group]'s @form.radio-group.title[`title`]
+/// property can also be used to describe the entire group, and is preferred
+/// over the generic @form.label element.
+///
+/// = Compatibility <compatibility>
+///
+/// Not all PDF readers have full support for all interactive forms features.
+/// The following compatibility table shows which features are available in
+/// each reader we tested, and when exporting to HTML.
+/// While testing, we used these PDF readers:
+/// - Adobe Acrobat Reader (version ???)
+/// - Pdfium (Chrome 156)
+/// - PDF.js (Firefox 159)
+/// - Foxit Reader (version ???)
+/// - Apple Quartz/Preview/???
+///
+/// #let yes = emoji.checkmark
+/// #let partial = emoji.warning
+/// #let no = emoji.crossmark
+///
+/// #docs-table(
+///   table.header[][Acrobat][Pdfium][PDF.js][Foxit][Apple][HTML],
+///   [@form.target[Submission] in FDF],
+///   yes, yes, no,
+///   [#yes#footnote[
+///     Foxit Reader incorrectly sends a `Content-Type: x-www-form-url-encoded` header
+///     for FDF and PDF. When submitting in XFDF, it correctly sends
+///     `Content-Type: application/vnd.adobe.xfdf`.] <foxit-submission>
+///   ],
+///   [?], no,
+///
+///   [@form.target[Submission] in XFDF or PDF],
+///   yes, no, no,
+///   [#yes#footnote(<foxit-submission>)],
+///   [?], no,
+///
+///   [@form.target[Submission] in URL encoded],
+///   yes, no, no, yes, [?], yes,
+///
+///   [@form.target[Submission] in multipart or plain text],
+///   no, no, no, no, [?], yes,
+///
+///   [@form.widget.state[Hover/down appearances]],
+///   yes,
+///   [#partial#footnote[Pdfium supports hover/down states on checkboxes and
+///     radio buttons, but not on regular buttons.]],
+///   no, [?], [?], no,
+///
+///   [Text color in textboxes and dropdowns],
+///   yes, yes, yes, [?], [?], no,
+///
+///   [@form.textbox.fixed-width[Fixed-width textboxes]],
+///   yes, yes, yes, [?], [?], no,
+///
+///   [@form.textbox.placeholder[Placeholder in textboxes]],
+///   no, no, no, no, no, yes,
+/// )
+///
+/// Everything else is fully supported in all readers and in HTML.
+///
 #[elem(scope, since = "unreleased", Locatable, ShowSet)]
 pub struct FormElem {
     /// The fields belonging to this form, along with any surrounding content.
@@ -33,6 +145,31 @@ pub struct FormElem {
 
     /// Where to submit this form when a @form.button with a
     /// @form.button.action[submit action] is pressed.
+    ///
+    /// Can either be a URL as a string, or a dictionary with the following fields:
+    /// - `url` (required): the URL where the form data is to be submitted.
+    ///   Can also be a relative path when exporting to HTML.
+    /// - `content-type` (optional, default `{auto}`): the format to submit form data in.
+    ///   Can be one of `{auto}`, `{"url-encoded"}`, `{"multipart"}`, `{"plain"}`, `{"pdf"}`,
+    ///   `{"fdf"}`, or `{"xfdf"}`.
+    ///   When set to `{auto}`, `{"fdf"}` is used for PDF export and `{"url-encoded"}`
+    ///   is used for HTML export.
+    /// - `method` (optional, default `{"post"}`): the HTTP method to use when submitting
+    ///   form data. Can be one of `{"post"}` or `{"get"}`.
+    ///
+    /// It is highly recommended to set each form field's name explicitly when
+    /// the form is expected to be submitted, as fields won't be submitted at all
+    /// in HTML and will have auto-generated names in PDF.
+    ///
+    /// ```typ
+    /// #form(
+    ///   target: (
+    ///     url: "https://example.com/submission",
+    ///     content-type: "multipart",
+    ///     method: "post",
+    ///   )
+    /// )
+    /// ```
     pub target: Option<FormTarget>,
 
     /// This form, to be inherited by field elements.
@@ -114,7 +251,7 @@ impl Packed<FormElem> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct FormTarget {
     /// The URL to send form data to.
-    pub url: EcoString, // TODO: check and strong type URL?
+    pub url: EcoString,
     /// The format to submit the form data in.
     pub content_type: Smart<ContentType>,
     /// The HTTP method to use when submitting the form.
@@ -182,7 +319,17 @@ pub enum HttpMethod {
     Post,
 }
 
-/// TODO: docs
+/// An interactive button.
+///
+/// A button can perform an action when clicked, such as
+/// resetting all fields in a form to their default values,
+/// or submitting the form.
+///
+/// ```example
+/// >>> #form[
+/// #form.button(action: "reset")[Reset Fields]
+/// >>> ]
+/// ```
 #[elem(name = "button", since = "unreleased", Locatable, Tagged, ShowSet)]
 pub struct FormButton {
     /// The label of this button.
@@ -191,11 +338,13 @@ pub struct FormButton {
 
     /// The name of this field.
     ///
-    /// If `{auto}`, will be automatically generated as `field-<n>`
+    /// If `{auto}`, will be automatically generated as `{"field-<n>"}`
     /// when exporting to PDF.
     pub name: Smart<EcoString>,
 
     /// The action that is triggered when this button is clicked, if any.
+    ///
+    /// When set to `{"submit"}`, the surrounding form must have a @form.target[target].
     pub action: Option<ButtonAction>,
 
     /// Whether this button is disabled and cannot be interacted with.
@@ -236,22 +385,32 @@ pub enum ButtonAction {
     Reset,
 }
 
-/// TODO: docs
+/// An interactive checkbox.
+///
+/// A checkbox can be used for binary choices, for example "yes" and "no".
+/// Checkboxes are toggled on and off when clicked.
+///
+/// ```example
+/// >>> #form[
+/// #form.checkbox(checked: false)
+/// #form.checkbox(checked: true)
+/// >>> ]
+/// ```
 #[elem(name = "checkbox", since = "unreleased", Locatable, Tagged, ShowSet)]
 pub struct FormCheckbox {
     /// The name of this field.
     ///
-    /// If `{auto}`, will be automatically generated as `field-<n>`
+    /// If `{auto}`, will be automatically generated as `{"field-<n>"}`
     /// when exporting to PDF.
     pub name: Smart<EcoString>,
 
-    /// Whether this checkbox should be checked.
+    /// Whether this checkbox is checked by default.
     pub checked: bool,
 
     /// Whether this checkbox is required and must be checked.
     pub required: bool,
 
-    /// Whether this checkbox is read-only and its value cannot be changed.
+    /// Whether this checkbox is read-only and cannot be interacted with.
     pub disabled: bool,
 
     /// The checkbox's width.
@@ -278,7 +437,31 @@ impl ShowSet for Packed<FormCheckbox> {
     }
 }
 
-/// TODO: docs
+/// A group of radio buttons.
+///
+/// Radio groups can be used for exclusive choices.
+/// In a group of radio buttons, at most one button can be selected at a time,
+/// that is, when selecting one option, all other options are automatically unselected.
+///
+/// ```example
+/// >>> #form[
+/// #form.radio-group(
+///   title: [Best typesetting software?],
+///   selected: <typst>,
+///   grid(
+///     columns: 2,
+///     inset: 0.2em,
+///     align: horizon,
+///     [#form.radio() <typst>],
+///     form.label(<typst>)[Typst],
+///     [#form.radio() <latex>],
+///     form.label(<latex>)[LaTeX],
+///     [#form.radio() <md>],
+///     form.label(<md>)[Markdown],
+///   )
+/// )
+/// >>> ]
+/// ```
 #[elem(name = "radio-group", since = "unreleased", Locatable, ShowSet)]
 pub struct FormRadioGroup {
     /// The radio buttons belonging to this group, along with any surrounding content.
@@ -287,11 +470,11 @@ pub struct FormRadioGroup {
 
     /// The name of this field.
     ///
-    /// If `{auto}`, will be automatically generated as `field-<n>`
+    /// If `{auto}`, will be automatically generated as `{"field-<n>"}`
     /// when exporting to PDF.
     pub name: Smart<EcoString>,
 
-    /// The label pointing to the radio button that is selected.
+    /// The label pointing to the radio button that is selected by default.
     pub selected: Option<Label>,
 
     /// Whether this radio group is required and one of the options must be selected.
@@ -303,7 +486,8 @@ pub struct FormRadioGroup {
     /// In HTML, this becomes the `<legend>` element of the `<fieldset>`.
     pub title: Option<Content>,
 
-    /// Whether this radio-group is read-only and its value cannot be changed.
+    /// Whether this radio group is read-only and none of its buttons
+    /// can be interacted with.
     pub disabled: bool,
 }
 
@@ -404,12 +588,14 @@ impl FormRadioGroup {
     }
 }
 
-/// TODO: docs
+/// An interactive radio button.
+///
+/// Must appear inside of a @form.radio-group[radio group].
 #[elem(name = "radio", since = "unreleased", Locatable, Tagged, Synthesize, ShowSet)]
 pub struct FormRadioButton {
     /// The value of the radio group when this option is selected.
     ///
-    /// If `{auto}`, it is automatically generated on PDF export as `option-<n>`.
+    /// If `{auto}`, it is automatically generated on PDF export as `{"option-<n>"}`.
     pub value: Smart<EcoString>,
 
     /// The radio button's width.
@@ -487,16 +673,40 @@ impl ShowSet for Packed<FormRadioButton> {
     }
 }
 
-/// TODO: docs
+/// A free-form text input.
+///
+/// A textbox can be used when you want the user to input arbitrary text
+/// into a field, such as their name, a long description, or some sort of identifier.
+/// This field comes in three variants: single-line, multi-line, or fixed-width.
+///
+/// ```example
+/// >>> #form[
+/// >>> #set form.textbox(width: 100%)
+/// // Single-line
+/// #form.label(<name>)[Name:]
+/// #form.textbox() <name>
+///
+/// // Multi-line
+/// #form.label(<about>)[About:]
+/// #form.textbox(multiline: true) <about>
+///
+/// // Fixed-width
+/// #form.label(<id>)[ID number:]
+/// #form.textbox(
+///   fixed-width: true,
+///   max-length: 9,
+/// ) <id>
+/// >>> ]
+/// ```
 #[elem(name = "textbox", since = "unreleased", Locatable, Tagged, ShowSet)]
 pub struct FormTextbox {
     /// The name of this field.
     ///
-    /// If `{auto}`, will be automatically generated as `field-<n>`
+    /// If `{auto}`, will be automatically generated as `{"field-<n>"}`
     /// when exporting to PDF.
     pub name: Smart<EcoString>,
 
-    /// The value of this field.
+    /// The default value of this field.
     pub value: Option<EcoString>,
 
     /// Whether the value of this field can span multiple lines.
@@ -520,7 +730,7 @@ pub struct FormTextbox {
     /// Only supported in HTML export.
     pub placeholder: Option<EcoString>,
 
-    /// Whether this text field is read-only and its value cannot be changed.
+    /// Whether this text field is read-only and it cannot be interacted with.
     pub disabled: bool,
 
     /// Whether the spellchecker should be enabled when filling out this field.
@@ -565,7 +775,34 @@ impl ShowSet for Packed<FormTextbox> {
     }
 }
 
-/// TODO: docs
+/// A dropdown or listbox field.
+///
+/// Choice fields can be used when a user is expected to select from a pre-defined
+/// list of options.
+/// This field comes in two variants: a dropdown, when only one option can be selected
+/// at a time, or a listbox when selecting multiple options is allowed.
+///
+/// ```example
+/// >>> #form[
+///  #let options = (
+///    "Chocolate", "Vanilla",
+///    "Raspberry", "Strawberry",
+///  )
+///
+///  // Dropdown
+///  #form.choice(
+///     options: options,
+///     value: "Chocolate",
+///  )
+///
+///  // Listbox
+///  #form.choice(
+///     options: options,
+///     multiple: true,
+///     value: ("Chocolate", "Raspberry"),
+///  )
+/// >>> ]
+/// ```
 #[elem(name = "choice", since = "unreleased", Locatable, Tagged, Synthesize, ShowSet)]
 pub struct FormChoice {
     /// The name of this field.
@@ -578,15 +815,6 @@ pub struct FormChoice {
     ///
     /// - When `false`, this field is displayed as a dropdown.
     /// - When `true`, this field is displayed as a listbox.
-    ///
-    /// #example(
-    ///   title: "When multiple is true, a listbox is displayed",
-    ///   ```
-    ///   #form(
-    ///     form.choice(options: ("red-car", "blue-car"), multiple: true)
-    ///   )
-    ///   ```
-    /// )
     pub multiple: bool,
 
     /// The available options on this field.
@@ -600,32 +828,41 @@ pub struct FormChoice {
     /// #example(
     ///   title: "Give an array of strings",
     ///   ```
-    ///   #form(
-    ///     form.choice(options: ("red-car", "blue-car"))
+    ///   >>> #form[
+    ///   #form.choice(
+    ///     options: ("red-car", "blue-car"),
+    ///     value: "red-car",
     ///   )
+    ///   >>> ]
     ///   ```
     /// )
     ///
     /// #example(
     ///   title: "Give a dictionary mapping to display name",
     ///   ```
-    ///   #form(
-    ///     form.choice(options: ("red-car": "Red Car", "blue-car": "Blue Car"))
+    ///   >>> #form[
+    ///   #form.choice(
+    ///     options: (
+    ///       "red-car": "Red Car",
+    ///       "blue-car": "Blue Car",
+    ///     ),
+    ///     value: "red-car",
     ///   )
+    ///   >>> ]
     ///   ```
     /// )
     pub options: ChoiceOptions,
 
-    /// The value of this field.
+    /// The default value of this field.
     ///
-    /// Can be a list if @form.choice.multiple[`multiple`] is true.
+    /// Can be an array of string if @form.choice.multiple[`multiple`] is true.
     /// All entries must be present in @form.choice.options[`options`].
     pub value: OneOrMultiple<EcoString>,
 
     /// Whether it is mandatory to fill out this field (i.e., it cannot be empty).
     pub required: bool,
 
-    /// Whether this text field is read-only and its value cannot be changed.
+    /// Whether this text field is read-only and it cannot be interacted with.
     pub disabled: bool,
 
     /// The field's width.
@@ -751,7 +988,17 @@ impl ChoiceOption {
     }
 }
 
-/// TODO: docs
+/// A label describing a form field.
+///
+/// In order to create an accessible form, all fields must
+/// have an accompanying label indicating what they represent.
+/// While a label can be placed anywhere in the document,
+/// it is recommended for it to be close to the field it describes.
+///
+/// Furthermore, when exporting to HTML, labels also act as focus target
+/// for their linked field.
+/// For example, clicking the label of a checkbox will toggle that checkbox,
+/// and clicking the label of a textbox will focus the cursor in that textbox.
 #[elem(name = "label", since = "unreleased", Locatable)]
 pub struct FormLabel {
     /// The form field that this label describes.
@@ -1026,15 +1273,22 @@ fn labelable_element_selector() -> &'static Selector {
 }
 
 /// Fragment element to allow styling of form fields in a specific state.
+///
+/// This element cannot be constructed manually and is part of the default
+/// show rule for each form field.
+///
+/// TODO: link to style guide
 #[elem(name = "widget", since = "unreleased", Construct)]
 pub struct FormWidget {
     /// Whether the form field is checked.
     ///
-    /// This is [`None`] if the form field does not have a checked state.
+    /// This is `{none}` if the form field does not have a checked state.
+    /// Only @form.checkbox[checkboxes] and @form.radio[radio buttons] have checked
+    /// states.
     pub checked: Option<bool>,
-    /// Whether the form field is hovered.
+    /// The interactive state the form field is in.
     ///
-    /// This is [`None`] if the form field only has the normal state.
+    /// This is `{none}` if the form field only has the normal state.
     pub state: Option<WidgetState>,
 
     /// The form field this widget belongs to.
@@ -1061,7 +1315,12 @@ pub enum WidgetState {
     Down,
 }
 
-/// The visual representation of a textbox's value.
+/// The writing area of a @form.textbox[textbox].
+///
+/// A cursor element can only be used inside the show rule of
+/// a textbox.
+///
+/// // TODO link to styling guide
 #[elem(name = "cursor", since = "unreleased")]
 pub struct FormCursor {}
 
