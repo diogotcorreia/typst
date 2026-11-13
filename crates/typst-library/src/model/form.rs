@@ -51,7 +51,7 @@ use crate::visualize::{CircleElem, Paint, RectElem};
 ///   Food preferences:
 ///   #grid(
 ///     columns: 2,
-///     inset: 0.2em,
+///     gutter: 0.4em,
 ///     align: horizon,
 ///     [#form.checkbox() <meat>],
 ///     form.label(<meat>)[Meat],
@@ -448,7 +448,7 @@ impl ShowSet for Packed<FormCheckbox> {
 ///   selected: <typst>,
 ///   grid(
 ///     columns: 2,
-///     inset: 0.2em,
+///     gutter: 0.4em,
 ///     align: horizon,
 ///     [#form.radio() <typst>],
 ///     form.label(<typst>)[Typst],
