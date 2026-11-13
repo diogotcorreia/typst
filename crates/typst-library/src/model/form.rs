@@ -203,6 +203,8 @@ impl FormElem {
     #[elem]
     type FormChoice;
     #[elem]
+    type FormSignature;
+    #[elem]
     type FormLabel;
     #[elem]
     type FormWidget;
@@ -983,6 +985,36 @@ impl ChoiceOption {
     /// If present, get the display name, otherwise get the mapping name.
     pub fn display_or_mapping_name(&self) -> EcoString {
         self.display_name.as_ref().unwrap_or(&self.mapping_name).clone()
+    }
+}
+
+/// TODO
+#[elem(name = "signature", since = "unreleased", Locatable, Tagged, ShowSet)]
+pub struct FormSignature {
+    /// The name of this field.
+    ///
+    /// If `{auto}`, will be automatically generated as `field-<n>`
+    /// when exporting to PDF.
+    pub name: Smart<EcoString>,
+
+    /// The field's width.
+    pub width: Smart<Rel<Length>>,
+
+    /// The field's height.
+    pub height: Sizing,
+}
+
+impl ShowSet for Packed<FormSignature> {
+    fn show_set(&self, styles: StyleChain) -> Styles {
+        let mut out = Styles::new();
+        // Makes the field itself available to the `FieldWidget`. Should be
+        // superseded by a proper ancestry mechanism in the future.
+        let mut elem = self.clone().pack();
+        elem.materialize(styles);
+        out.set(FormWidget::parent, Some(elem));
+
+        styles::set_rect_stroke(&mut out, false);
+        out
     }
 }
 
