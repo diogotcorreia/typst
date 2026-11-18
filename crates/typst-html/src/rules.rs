@@ -739,8 +739,7 @@ const FORM_RULE: ShowFn<FormElem> = |elem, _, styles| {
     Ok(HtmlElem::new(tag::form)
         .with_attrs(attributes)
         .with_body(Some(elem.body.clone()))
-        .pack()
-        .spanned(span))
+        .pack())
 };
 
 const FORM_BUTTON_RULE: ShowFn<FormButton> = |elem, engine, styles| {
@@ -796,6 +795,10 @@ const FORM_CHECKBOX_RULE: ShowFn<FormCheckbox> = |elem, engine, styles| {
         attributes.push(attr::disabled, "");
     }
 
+    if elem.required.get(styles) {
+        attributes.push(attr::required, "");
+    }
+
     let mut css = css::Properties::build(engine.binding_guard(span));
     set_css_width_height(&mut css, elem.width.get(styles), elem.height.get(styles));
 
@@ -826,13 +829,13 @@ const FORM_RADIO_GROUP_RULE: ShowFn<FormRadioGroup> = |elem, engine, styles| {
         HtmlElem::new(tag::legend).with_body(Some(title)).pack().spanned(span)
     });
 
-    let body = Content::sequence([legend, Some(elem.body.clone())].into_iter().flatten());
+    let body = Content::sequence([legend, Some(elem.body.clone())].into_iter().flatten())
+        .spanned(span);
 
     Ok(HtmlElem::new(tag::fieldset)
         .with_attrs(attributes)
         .with_body(Some(body))
-        .pack()
-        .spanned(span))
+        .pack())
 };
 
 const FORM_RADIO_RULE: ShowFn<FormRadioButton> = |elem, engine, styles| {
@@ -997,6 +1000,7 @@ const FORM_CHOICE_RULE: ShowFn<FormChoice> = |elem, engine, styles| {
                 .with_attrs(option_attrs)
                 .with_body(Some(body))
                 .pack()
+                .spanned(span)
         })
         .collect();
 
@@ -1030,8 +1034,7 @@ const FORM_LABEL_RULE: ShowFn<FormLabel> = |elem, engine, _| {
     Ok(HtmlElem::new(tag::label)
         .with_attr(attr::r#for, id)
         .with_body(Some(elem.body.clone()))
-        .pack()
-        .spanned(span))
+        .pack())
 };
 
 const SUB_RULE: ShowFn<SubElem> =
