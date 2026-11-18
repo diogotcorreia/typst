@@ -19,6 +19,7 @@ use typst_library::text::{
     FontFlags, FontStyle, FontWeight, TextElem, families, variant,
 };
 use typst_library::visualize::Curve;
+use typst_syntax::Span;
 
 /// Layout the button.
 #[typst_macros::time(span = elem.span())]
@@ -50,7 +51,7 @@ pub fn layout_button(
 
     let link = LocatorLink::measure(elem.location().unwrap(), span);
     let body =
-        layout_appearance_body(engine, None, Some(locator), &link, styles, region)?;
+        layout_appearance_body(engine, span, None, Some(locator), &link, styles, region)?;
 
     // Button's size is dictated by the contents of the normal state.
     let size = region.expand.select(region.size, body.normal.size());
@@ -76,9 +77,11 @@ pub fn layout_checkbox(
     styles: StyleChain,
     region: Region,
 ) -> SourceResult<Frame> {
-    let link = LocatorLink::measure(elem.location().unwrap(), elem.span());
+    let span = elem.span();
+    let link = LocatorLink::measure(elem.location().unwrap(), span);
     let body_off = layout_appearance_body(
         engine,
+        span,
         Some(false),
         Some(locator),
         &link,
@@ -86,7 +89,7 @@ pub fn layout_checkbox(
         region,
     )?;
     let body_on =
-        layout_appearance_body(engine, Some(true), None, &link, styles, region)?;
+        layout_appearance_body(engine, span, Some(true), None, &link, styles, region)?;
 
     // Checkbox's size is dictated by the contents of the unchecked normal state.
     let size = region.expand.select(region.size, body_off.normal.size());
@@ -123,6 +126,7 @@ pub fn layout_radio_button(
     let link = LocatorLink::measure(elem.location().unwrap(), span);
     let body_off = layout_appearance_body(
         engine,
+        span,
         Some(false),
         Some(locator),
         &link,
@@ -130,7 +134,7 @@ pub fn layout_radio_button(
         region,
     )?;
     let body_on =
-        layout_appearance_body(engine, Some(true), None, &link, styles, region)?;
+        layout_appearance_body(engine, span, Some(true), None, &link, styles, region)?;
 
     // Radio's size is dictated by the contents of the unchecked normal state.
     let size = region.expand.select(region.size, body_off.normal.size());
@@ -167,7 +171,7 @@ pub fn layout_textbox(
     styles: StyleChain,
     region: Region,
 ) -> SourceResult<Frame> {
-    layout_widget(engine, None, None, locator, styles, region)
+    layout_widget(engine, elem.span(), None, None, locator, styles, region)
 }
 
 /// Layout the choice field.
@@ -181,7 +185,7 @@ pub fn layout_choice(
 ) -> SourceResult<Frame> {
     let span = elem.span();
 
-    let inner_frame = layout_widget(engine, None, None, locator, styles, region)?;
+    let inner_frame = layout_widget(engine, span, None, None, locator, styles, region)?;
     let size = region.expand.select(region.size, inner_frame.size());
 
     let widget = FieldWidget {
@@ -210,7 +214,7 @@ pub fn layout_signature(
 ) -> SourceResult<Frame> {
     let span = elem.span();
 
-    let inner_frame = layout_widget(engine, None, None, locator, styles, region)?;
+    let inner_frame = layout_widget(engine, span, None, None, locator, styles, region)?;
     let size = region.expand.select(region.size, inner_frame.size());
 
     let widget = FieldWidget {
@@ -237,20 +241,23 @@ pub fn layout_cursor(
     styles: StyleChain,
     region: Region,
 ) -> SourceResult<Frame> {
+    let span = elem.span();
     let Some(textbox) = styles
         .get_ref(FormWidget::parent)
         .as_ref()
         .and_then(|elem| elem.to_packed::<FormTextbox>())
     else {
         bail!(
-            elem.span(), "this cursor element must be inside a textbox element";
+            span, "this cursor element must be inside a textbox element";
             hint: "you can use it in a show rule on `form.widget` within a textbox";
         )
     };
     let multiline = textbox.multiline.get(styles);
     let variable_text = get_variable_text(&engine.world, styles);
 
-    let body = TextElem::new(textbox.value.get_cloned(styles).unwrap_or_default()).pack();
+    let body = TextElem::new(textbox.value.get_cloned(styles).unwrap_or_default())
+        .pack()
+        .spanned(span);
     let mut frame = crate::layout_frame(engine, &body, locator, styles, region)?;
 
     // Since this field might be filled out with one of the 14 standard PDF fonts,
@@ -295,13 +302,18 @@ pub fn layout_cursor(
 /// checked/hovered).
 fn layout_widget(
     engine: &mut Engine,
+    span: Span,
     checked: Option<bool>,
     state: Option<WidgetState>,
     locator: Locator,
     styles: StyleChain,
     region: Region,
 ) -> SourceResult<Frame> {
-    let content = FormWidget::new().with_checked(checked).with_state(state).pack();
+    let content = FormWidget::new()
+        .with_checked(checked)
+        .with_state(state)
+        .pack()
+        .spanned(span);
     crate::layout_frame(engine, &content, locator, styles, region)
 }
 
@@ -311,6 +323,7 @@ fn layout_widget(
 /// Otherwise, the measurement locator is used just like for the other states.
 fn layout_appearance_body(
     engine: &mut Engine,
+    span: Span,
     checked: Option<bool>,
     locator: Option<Locator>,
     link: &LocatorLink,
@@ -319,6 +332,7 @@ fn layout_appearance_body(
 ) -> SourceResult<FieldAppearanceBody<Frame>> {
     let normal = layout_widget(
         engine,
+        span,
         checked,
         Some(WidgetState::Normal),
         locator.unwrap_or_else(|| Locator::link(link)),
@@ -327,6 +341,7 @@ fn layout_appearance_body(
     )?;
     let hover = layout_widget(
         engine,
+        span,
         checked,
         Some(WidgetState::Hovered),
         Locator::link(link),
@@ -335,6 +350,7 @@ fn layout_appearance_body(
     )?;
     let down = layout_widget(
         engine,
+        span,
         checked,
         Some(WidgetState::Down),
         Locator::link(link),
