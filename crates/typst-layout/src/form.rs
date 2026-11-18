@@ -12,7 +12,8 @@ use typst_library::layout::{
 use typst_library::model::{
     ButtonAction, FieldAppearanceBody, FieldAppearanceKind, FieldWidget, FontType,
     FormButton, FormCheckbox, FormChoice, FormCursor, FormElem, FormRadioButton,
-    FormRadioGroup, FormTextbox, FormWidget, VariableText, WidgetAction, WidgetState,
+    FormRadioGroup, FormSignature, FormTextbox, FormWidget, VariableText, WidgetAction,
+    WidgetState,
 };
 use typst_library::text::{
     FontFlags, FontStyle, FontWeight, TextElem, families, variant,
@@ -185,6 +186,35 @@ pub fn layout_choice(
         value: None,
         appearance: Arc::new(FieldAppearanceKind::Single {
             variable_text: Some(get_variable_text(&engine.world, styles)),
+            body: FieldAppearanceBody::new(inner_frame),
+        }),
+    };
+
+    Ok(create_widget_frame(size, widget))
+}
+
+/// Layout the signature field.
+#[typst_macros::time(span = elem.span())]
+pub fn layout_signature(
+    elem: &Packed<FormSignature>,
+    engine: &mut Engine,
+    locator: Locator,
+    styles: StyleChain,
+    region: Region,
+) -> SourceResult<Frame> {
+    let span = elem.span();
+
+    let inner_frame = layout_widget(engine, None, None, locator, styles, region)?;
+    let size = region.expand.select(region.size, inner_frame.size());
+
+    let widget = FieldWidget {
+        span,
+        field_location: elem.location().unwrap(),
+        size,
+        action: None,
+        value: None,
+        appearance: Arc::new(FieldAppearanceKind::Single {
+            variable_text: None,
             body: FieldAppearanceBody::new(inner_frame),
         }),
     };

@@ -34,9 +34,10 @@ use typst_library::layout::{
 use typst_library::math::EquationElem;
 use typst_library::model::{
     ArtifactElem, Document, EmphElem, EnumElem, FigureCaption, FigureElem, FootnoteElem,
-    FootnoteEntry, FormButton, FormCheckbox, FormChoice, FormRadioButton, FormTextbox,
-    HeadingElem, LinkMarker, ListElem, Outlinable, OutlineEntry, ParElem, PdfMarkerTag,
-    PdfMarkerTagKind, QuoteElem, StrongElem, TableCell, TableElem, TermsElem, TitleElem,
+    FootnoteEntry, FormButton, FormCheckbox, FormChoice, FormRadioButton, FormSignature,
+    FormTextbox, HeadingElem, LinkMarker, ListElem, Outlinable, OutlineEntry, ParElem,
+    PdfMarkerTag, PdfMarkerTagKind, QuoteElem, StrongElem, TableCell, TableElem,
+    TermsElem, TitleElem,
 };
 use typst_library::text::{
     HighlightElem, OverlineElem, RawElem, RawLine, StrikeElem, SubElem, SuperElem,
@@ -387,6 +388,7 @@ fn progress_tree_start(tree: &mut TreeBuilder, elem: &Content) -> GroupId {
         || elem.is::<FormRadioButton>()
         || elem.is::<FormTextbox>()
         || elem.is::<FormChoice>()
+        || elem.is::<FormSignature>()
     {
         push_group(tree, elem, GroupKind::FormField(elem.span(), None))
     } else if let Some(_) = elem.to_packed::<TitleElem>() {

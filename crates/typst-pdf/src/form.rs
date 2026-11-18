@@ -25,8 +25,8 @@ use typst_library::introspection::{Introspector, Location};
 use typst_library::layout::{Abs, Frame, Sides, Size, Transform};
 use typst_library::model::{
     ContentType, FieldAppearanceKind, FieldWidget, FontType, FormButton, FormCheckbox,
-    FormChoice, FormElem, FormLabel, FormRadioGroup, FormTextbox, HttpMethod,
-    WidgetAction, form_fields_selector, gen_field_name,
+    FormChoice, FormElem, FormLabel, FormRadioGroup, FormSignature, FormTextbox,
+    HttpMethod, WidgetAction, form_fields_selector, gen_field_name,
 };
 use typst_library::visualize::Paint;
 use typst_syntax::Span;
@@ -217,6 +217,16 @@ impl Field {
             };
 
             (name, krilla_field)
+        } else if let Some(signature_field) = field.to_packed::<FormSignature>() {
+            let name =
+                signature_field.name.get_cloned(styles).unwrap_or_else(name_generator);
+            let partial_name = name.rsplit('.').next().unwrap().to_string();
+
+            let krilla_field = kf::FormField::signature(partial_name)
+                .with_location(Some(span.into_raw()))
+                .with_alt_name(get_alt_text());
+
+            (name, krilla_field.into())
         } else {
             panic_internal("unknown field type").at(field.span())?
         };
@@ -340,6 +350,16 @@ impl Field {
                     .appearance
                     .single()
                     .expect_internal("combobox does not have single appearance")
+                    .at(span)?;
+                let widget = form_field.new_widget(annotation.bbox, body.normal);
+
+                Self::insert_annotation_inner(span, page, form_field, widget, action)?
+            }
+            kf::FieldKind::Signature(form_field) => {
+                let body = annotation
+                    .appearance
+                    .single()
+                    .expect_internal("signature field does not have single appearance")
                     .at(span)?;
                 let widget = form_field.new_widget(annotation.bbox, body.normal);
 

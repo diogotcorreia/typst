@@ -24,8 +24,8 @@ use typst_library::math::EquationElem;
 use typst_library::model::styles::listbox_selected_paint;
 use typst_library::model::{
     ArtifactElem, ArtifactKind, FormButton, FormCheckbox, FormChoice, FormCursor,
-    FormElem, FormLabel, FormRadioButton, FormRadioGroup, FormTextbox, FormWidget,
-    PdfMarkerTag, assert_not_inside_form_field,
+    FormElem, FormLabel, FormRadioButton, FormRadioGroup, FormSignature, FormTextbox,
+    FormWidget, PdfMarkerTag, assert_not_inside_form_field,
 };
 use typst_library::model::{
     Attribution, BibliographyElem, CiteElem, CiteGroup, CslIndentElem, CslLightElem,
@@ -83,6 +83,7 @@ pub fn register(rules: &mut NativeRuleMap) {
     rules.register(Paged, FORM_RADIO_RULE);
     rules.register(Paged, FORM_TEXTBOX_RULE);
     rules.register(Paged, FORM_CHOICE_RULE);
+    rules.register(Paged, FORM_SIGNATURE_RULE);
     rules.register(Paged, FORM_LABEL_RULE);
     rules.register(Paged, FORM_WIDGET_RULE);
     rules.register(Paged, FORM_CURSOR_RULE);
@@ -707,6 +708,21 @@ const FORM_CHOICE_RULE: ShowFn<FormChoice> = |elem, _, styles| {
         .spanned(span))
 };
 
+const FORM_SIGNATURE_RULE: ShowFn<FormSignature> = |elem, _, styles| {
+    let span = elem.span();
+    FormElem::try_from_styles(elem, &styles)?;
+    assert_not_inside_form_field(elem, styles)?;
+
+    let width = elem.width.get(styles);
+    let height = elem.height.get(styles);
+
+    Ok(BlockElem::single_layouter(elem.clone(), crate::form::layout_signature)
+        .with_width(Smart::Custom(width))
+        .with_height(height)
+        .pack()
+        .spanned(span))
+};
+
 const FORM_LABEL_RULE: ShowFn<FormLabel> = |elem, engine, _| {
     // Check that label exists and points to form field
     elem.resolve_early(engine, elem.span())?;
@@ -834,6 +850,8 @@ const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, engine, styles| {
                 ]))))
                 .pack()
         }
+    } else if field.is::<FormSignature>() {
+        RectElem::new().with_width(full_width).with_height(full_height).pack()
     } else {
         panic_internal("unknown field type").at(span)?
     };
