@@ -150,7 +150,7 @@
 
 --- form-cursor-outside-textbox paged ---
 // Error: 2-15 this cursor element must be inside a textbox element
-// Hint: 2-15 you can use it in a show rule such as ```\n#show form.textbox: {\n   show form.widget: form.cursor()\n   it\n}\n```
+// Hint: 2-15 you can use it in a show rule on `form.widget` within a textbox
 #form.cursor()
 
 --- form-textbox-no-cursor paged ---
@@ -160,7 +160,7 @@
     it
   }
   // Error: 4-18 textbox needs to have a `#form.cursor()` element in its show rule
-  // Hint: 4-18 add `#form.cursor()` to the textbox's widget show rule: ```\n#show form.textbox: {\n   show form.widget: form.cursor()\n   it\n}\n```
+  // Hint: 4-18 add `#form.cursor()` to the `form.widget` show rule within a textbox
   #form.textbox()
 ]
 
@@ -387,8 +387,8 @@
 
 --- form-textbox-placeholder-paged paged ---
 #form[
-  // Warning: 4-53 ignored `placeholder` property when exporting
-  // Hint: 4-53 property not supported in this export format
+  // Warning: 4-53 `placeholder` property was ignored during paged export
+  // Hint: 4-53 the property is not supported in this export format
   #form.textbox(placeholder: "foobar", width: 100pt)
 ]
 
@@ -898,4 +898,22 @@
 
   #cnt.step()
   #context cnt.display() // 4
+]
+
+--- form-counter-html-frame html ---
+#form[
+  #let cnt = counter("counter-1")
+
+  #show form.checkbox: it => {
+    show form.widget.where(checked: false): it => {
+      cnt.step()
+      it
+    }
+    it
+  }
+  #context cnt.display() // 0
+  #form.checkbox()
+  #context cnt.display() // 0
+  #html.frame(form.checkbox())
+  #context cnt.display() // 1
 ]

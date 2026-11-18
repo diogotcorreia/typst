@@ -56,8 +56,9 @@ f05d21fa2b913016803bf5476a1b6826 footnote-ref-multiple
 d3d058faae11ef5bc9c02e108552cf22 form-basic-pdf-a-3a
 d6b9817519a59e57ab1d77372ab3fcab form-basic-pdf-ua-1
 a783fb6be28312081a8fc2eb4a5e712a form-button
-1e629144a71976acc73c6e2bddf21942 form-checkbox
+cea07b9736184117b29a9200dfc74fad form-checkbox
 427e8ae7fe24ec363b9f989ecd4a7aba form-choice
+a800cae646abe84dcc16534e60e3df66 form-counter-html-frame
 d8be7380e8386d5eb5bb5af4ab3ece7d form-multiple
 031abc81bdfa130fd6b44e1233004666 form-radio
 768edbc00c99021af9c92022062f62ad form-textbox
