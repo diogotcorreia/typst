@@ -21,7 +21,7 @@ use crate::introspection::{
     Counter, CounterKey, Introspector, Location, QueryIntrospection,
     QueryLabelIntrospection,
 };
-use crate::layout::{Abs, Frame, Length, Rel, Sides, Size, Sizing};
+use crate::layout::{Abs, Em, Frame, Length, Rel, Sides, Size, Sizing};
 use crate::visualize::{CircleElem, Paint, RectElem};
 
 /// A form with interactive and fillable fields.
@@ -1001,10 +1001,12 @@ pub struct FormSignature {
     pub name: Smart<EcoString>,
 
     /// The field's width.
-    pub width: Smart<Rel<Length>>,
+    #[default(Em::new(10.0).into())]
+    pub width: Rel<Length>,
 
     /// The field's height.
-    pub height: Sizing,
+    #[default(Em::new(3.0).into())]
+    pub height: Sizing, // TODO this still accepts auto
 }
 
 impl ShowSet for Packed<FormSignature> {
@@ -1286,6 +1288,7 @@ pub fn form_fields_selector() -> &'static Selector {
             FormRadioGroup::ELEM.select(),
             FormTextbox::ELEM.select(),
             FormChoice::ELEM.select(),
+            FormSignature::ELEM.select(),
         ])
     )
 }
@@ -1301,6 +1304,7 @@ fn labelable_element_selector() -> &'static Selector {
             FormRadioButton::ELEM.select(),
             FormTextbox::ELEM.select(),
             FormChoice::ELEM.select(),
+            FormSignature::ELEM.select(),
         ])
     )
 }
