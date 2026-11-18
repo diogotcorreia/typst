@@ -294,7 +294,7 @@ impl From<FormTarget> for Dict {
 /// The submission format.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Cast)]
 pub enum ContentType {
-    /// URL encoded key-value pairs (`application/x-www-form-url-encoded`).
+    /// URL encoded key-value pairs (`application/x-www-form-urlencoded`).
     UrlEncoded,
     /// Multipart form data (`multipart/form-data`).
     Multipart,
