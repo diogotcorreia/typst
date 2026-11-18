@@ -707,8 +707,12 @@ const FORM_RULE: ShowFn<FormElem> = |elem, _, styles| {
         attributes.push(attr::action, target.url.clone());
 
         if let Smart::Custom(content_type) = target.content_type {
-            if target.method == HttpMethod::Get && content_type != ContentType::UrlEncoded {
-                bail!(span, "method `\"get\"` is only supported with content-type `\"url-encoded\"`");
+            if target.method == HttpMethod::Get && content_type != ContentType::UrlEncoded
+            {
+                bail!(
+                    span,
+                    "method `\"get\"` is only supported with content-type `\"url-encoded\"`"
+                );
             }
             let content_type = match content_type {
                 ContentType::UrlEncoded => "application/x-www-form-url-encoded",
