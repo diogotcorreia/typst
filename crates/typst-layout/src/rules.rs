@@ -571,7 +571,6 @@ const FORM_RULE: ShowFn<FormElem> = |elem, _, styles| {
 };
 
 const FORM_BUTTON_RULE: ShowFn<FormButton> = |elem, _, styles| {
-    let span = elem.span();
     FormElem::try_from_styles(elem, &styles)?;
     assert_not_inside_form_field(elem, styles)?;
 
@@ -581,12 +580,10 @@ const FORM_BUTTON_RULE: ShowFn<FormButton> = |elem, _, styles| {
     Ok(BlockElem::single_layouter(elem.clone(), crate::form::layout_button)
         .with_width(width)
         .with_height(height)
-        .pack()
-        .spanned(span))
+        .pack())
 };
 
 const FORM_CHECKBOX_RULE: ShowFn<FormCheckbox> = |elem, _, styles| {
-    let span = elem.span();
     FormElem::try_from_styles(elem, &styles)?;
     assert_not_inside_form_field(elem, styles)?;
 
@@ -597,25 +594,24 @@ const FORM_CHECKBOX_RULE: ShowFn<FormCheckbox> = |elem, _, styles| {
     Ok(BlockElem::single_layouter(elem.clone(), crate::form::layout_checkbox)
         .with_width(width)
         .with_height(height)
-        .pack()
-        .spanned(span))
+        .pack())
 };
 
 const FORM_RADIO_GROUP_RULE: ShowFn<FormRadioGroup> = |elem, _, styles| {
     FormElem::try_from_styles(elem, &styles)?;
 
-    let legend = elem
-        .title
-        .get_cloned(styles)
-        .map(|title| ParElem::new(UnderlineElem::new(title).pack()).pack());
+    let legend = elem.title.get_cloned(styles).map(|title| {
+        let span = title.span();
+        BlockElem::packed(UnderlineElem::new(title).pack().spanned(span)).spanned(span)
+    });
 
-    let body = Content::sequence([legend, Some(elem.body.clone())].into_iter().flatten());
+    let body = Content::sequence([legend, Some(elem.body.clone())].into_iter().flatten())
+        .spanned(elem.span());
 
     Ok(BlockElem::packed(body))
 };
 
 const FORM_RADIO_RULE: ShowFn<FormRadioButton> = |elem, _, styles| {
-    let span = elem.span();
     assert_not_inside_form_field(elem, styles)?;
 
     let width = elem.width.get(styles).or(Smart::Custom(Em::one().into()));
@@ -625,8 +621,7 @@ const FORM_RADIO_RULE: ShowFn<FormRadioButton> = |elem, _, styles| {
     Ok(BlockElem::single_layouter(elem.clone(), crate::form::layout_radio_button)
         .with_width(width)
         .with_height(height)
-        .pack()
-        .spanned(span))
+        .pack())
 };
 
 const FORM_TEXTBOX_RULE: ShowFn<FormTextbox> = |elem, engine, styles| {
@@ -636,8 +631,8 @@ const FORM_TEXTBOX_RULE: ShowFn<FormTextbox> = |elem, engine, styles| {
 
     if elem.placeholder.get_ref(styles).is_some() {
         engine.sink.warn(warning!(
-            span, "ignored `placeholder` property when exporting";
-            hint: "property not supported in this export format";
+            span, "`placeholder` property was ignored during paged export";
+            hint: "the property is not supported in this export format";
         ));
     }
 
@@ -659,13 +654,7 @@ const FORM_TEXTBOX_RULE: ShowFn<FormTextbox> = |elem, engine, styles| {
     if cursors.is_empty() {
         engine.delay::<()>(Err(eco_vec![error!(
             span, "textbox needs to have a `#form.cursor()` element in its show rule";
-            hint: "add `#form.cursor()` to the textbox's widget show rule: \
-```
-#show form.textbox: {{
-   show form.widget: form.cursor()
-   it
-}}
-```"
+            hint: "add `#form.cursor()` to the `form.widget` show rule within a textbox";
         )]));
     } else if cursors.len() > 1 {
         engine.delay::<()>(Err(eco_vec![error!(
@@ -689,12 +678,10 @@ const FORM_TEXTBOX_RULE: ShowFn<FormTextbox> = |elem, engine, styles| {
     Ok(BlockElem::single_layouter(elem.clone(), crate::form::layout_textbox)
         .with_width(width)
         .with_height(height)
-        .pack()
-        .spanned(span))
+        .pack())
 };
 
 const FORM_CHOICE_RULE: ShowFn<FormChoice> = |elem, _, styles| {
-    let span = elem.span();
     FormElem::try_from_styles(elem, &styles)?;
     assert_not_inside_form_field(elem, styles)?;
 
@@ -704,12 +691,10 @@ const FORM_CHOICE_RULE: ShowFn<FormChoice> = |elem, _, styles| {
     Ok(BlockElem::single_layouter(elem.clone(), crate::form::layout_choice)
         .with_width(width)
         .with_height(height)
-        .pack()
-        .spanned(span))
+        .pack())
 };
 
 const FORM_SIGNATURE_RULE: ShowFn<FormSignature> = |elem, _, styles| {
-    let span = elem.span();
     FormElem::try_from_styles(elem, &styles)?;
     assert_not_inside_form_field(elem, styles)?;
 
@@ -719,8 +704,7 @@ const FORM_SIGNATURE_RULE: ShowFn<FormSignature> = |elem, _, styles| {
     Ok(BlockElem::single_layouter(elem.clone(), crate::form::layout_signature)
         .with_width(Smart::Custom(width))
         .with_height(height)
-        .pack()
-        .spanned(span))
+        .pack())
 };
 
 const FORM_LABEL_RULE: ShowFn<FormLabel> = |elem, engine, _| {
@@ -742,13 +726,24 @@ const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, engine, styles| {
     let full_height = Sizing::Rel(Rel::one());
 
     let content = if let Some(button) = field.to_packed::<FormButton>() {
-        RectElem::new().with_body(Some(button.body.clone())).pack()
+        // Expand if button has explicit width/height
+        let width = button.width.get_ref(styles).map(|_| Rel::one());
+        let height = if button.height.get_ref(styles).is_auto() {
+            Sizing::Auto
+        } else {
+            full_height
+        };
+        RectElem::new()
+            .with_width(width)
+            .with_height(height)
+            .with_body(Some(button.body.clone()))
+            .pack()
     } else if field.is::<FormCheckbox>() {
         let checked = elem.checked.get(styles).unwrap_or_default();
         let checkmark = checked.then(|| {
-            AlignElem::new(SymbolElem::packed("✓"))
-                .with_alignment(HAlignment::Center + VAlignment::Horizon)
-                .pack()
+            SymbolElem::packed("✓")
+                .aligned(HAlignment::Center + VAlignment::Horizon)
+                .spanned(span)
         });
         RectElem::new()
             .with_width(full_width)
@@ -759,16 +754,14 @@ const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, engine, styles| {
     } else if field.is::<FormRadioButton>() {
         let checked = elem.checked.get(styles).unwrap_or_default();
         let inner_circle = checked.then(|| {
-            AlignElem::new(
-                CircleElem::new()
-                    .with_width(full_width)
-                    .with_height(full_height)
-                    .with_outset(Sides::splat(Some(Rel::zero())))
-                    .with_fill(Some(Color::BLACK.into()))
-                    .pack(),
-            )
-            .with_alignment(HAlignment::Center + VAlignment::Horizon)
-            .pack()
+            CircleElem::new()
+                .with_width(full_width)
+                .with_height(full_height)
+                .with_outset(Sides::splat(Some(Rel::zero())))
+                .with_fill(Some(Color::BLACK.into()))
+                .pack()
+                .aligned(HAlignment::Center + VAlignment::Horizon)
+                .spanned(span)
         });
         CircleElem::new()
             .with_width(full_width)
@@ -816,7 +809,7 @@ const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, engine, styles| {
                 let selected = value.contains(&i);
                 let fill = selected.then_some(listbox_selected_paint(disabled));
 
-                let mut text = TextElem::new(name).pack();
+                let mut text = TextElem::new(name).pack().spanned(span);
                 if selected && !disabled {
                     text = text.set(TextElem::fill, Color::WHITE.into());
                 }
@@ -828,9 +821,12 @@ const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, engine, styles| {
                     .with_fill(fill)
                     .with_body(Some(BlockBody::Content(text)))
                     .pack()
+                    .spanned(span) // TODO: add span to ChoiceOption?
             });
 
-            let body = StackElem::new(children.map(StackChild::Block).collect()).pack();
+            let body = StackElem::new(children.map(StackChild::Block).collect())
+                .pack()
+                .spanned(span);
             RectElem::new().with_body(Some(body)).pack()
         } else {
             let value = value
@@ -843,11 +839,14 @@ const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, engine, styles| {
             BlockElem::new()
                 .with_breakable(false)
                 .with_inset(inset)
-                .with_body(Some(BlockBody::Content(Content::sequence([
-                    TextElem::new(value).pack(),
-                    HElem::new(Spacing::Fr(Fr::one())).pack(),
-                    SymbolElem::packed("▾"),
-                ]))))
+                .with_body(Some(BlockBody::Content(
+                    Content::sequence([
+                        TextElem::new(value).pack().spanned(span),
+                        HElem::new(Spacing::Fr(Fr::one())).pack().spanned(span),
+                        SymbolElem::packed("▾").spanned(span),
+                    ])
+                    .spanned(span),
+                )))
                 .pack()
         }
     } else if field.is::<FormSignature>() {

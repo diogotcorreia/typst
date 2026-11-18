@@ -53,7 +53,7 @@ pub fn layout_button(
         layout_appearance_body(engine, None, Some(locator), &link, styles, region)?;
 
     // Button's size is dictated by the contents of the normal state.
-    let size = body.normal.size();
+    let size = region.expand.select(region.size, body.normal.size());
 
     let widget = FieldWidget {
         span,
@@ -88,11 +88,14 @@ pub fn layout_checkbox(
     let body_on =
         layout_appearance_body(engine, Some(true), None, &link, styles, region)?;
 
+    // Checkbox's size is dictated by the contents of the unchecked normal state.
+    let size = region.expand.select(region.size, body_off.normal.size());
+
     let checked = elem.checked.get(styles);
     let widget = FieldWidget {
         span: elem.span(),
         field_location: elem.location().unwrap(),
-        size: region.size,
+        size,
         action: None,
         value: None,
         appearance: Arc::new(FieldAppearanceKind::Dual {
@@ -102,7 +105,7 @@ pub fn layout_checkbox(
         }),
     };
 
-    Ok(create_widget_frame(region.size, widget))
+    Ok(create_widget_frame(size, widget))
 }
 
 /// Layout the radio button.
@@ -129,6 +132,9 @@ pub fn layout_radio_button(
     let body_on =
         layout_appearance_body(engine, Some(true), None, &link, styles, region)?;
 
+    // Radio's size is dictated by the contents of the unchecked normal state.
+    let size = region.expand.select(region.size, body_off.normal.size());
+
     let value = elem
         .resolved_value
         .clone()
@@ -139,7 +145,7 @@ pub fn layout_radio_button(
     let widget = FieldWidget {
         span,
         field_location: group.location().unwrap(),
-        size: region.size,
+        size,
         action: None,
         value: Some(value),
         appearance: Arc::new(FieldAppearanceKind::Dual {
@@ -149,7 +155,7 @@ pub fn layout_radio_button(
         }),
     };
 
-    Ok(create_widget_frame(region.size, widget))
+    Ok(create_widget_frame(size, widget))
 }
 
 /// Layout the textbox.
@@ -238,13 +244,7 @@ pub fn layout_cursor(
     else {
         bail!(
             elem.span(), "this cursor element must be inside a textbox element";
-            hint: "you can use it in a show rule such as \
-```
-#show form.textbox: {{
-   show form.widget: form.cursor()
-   it
-}}
-```"
+            hint: "you can use it in a show rule on `form.widget` within a textbox";
         )
     };
     let multiline = textbox.multiline.get(styles);
@@ -373,8 +373,8 @@ fn get_variable_text<'a>(
             world
                 .book()
                 .select(family.as_str(), variant)
-                .and_then(|id| world.font(id))
-                .map(|font| font.info().flags)
+                .and_then(|id| world.book().info(id))
+                .map(|info| info.flags)
         })
         .map_or(FontType::Serif, |flags| {
             if flags.contains(FontFlags::MONOSPACE) {
