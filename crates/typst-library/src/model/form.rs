@@ -350,9 +350,13 @@ pub struct FormButton {
     pub disabled: bool,
 
     /// The button's width.
+    ///
+    /// When `{auto}`, the button will expand with its content.
     pub width: Smart<Rel<Length>>,
 
     /// The button's height.
+    ///
+    /// When `{auto}`, the button will expand with its content.
     pub height: Sizing,
 }
 
@@ -413,9 +417,15 @@ pub struct FormCheckbox {
     pub disabled: bool,
 
     /// The checkbox's width.
+    ///
+    /// When `{auto}`, the width defaults to `{1em}` when exporting to a paged
+    /// format, and is unset when exporting to HTML.
     pub width: Smart<Rel<Length>>,
 
     /// The checkbox's height.
+    ///
+    /// When `{auto}`, the height defaults to `{1em}` when exporting to a paged
+    /// format, and is unset when exporting to HTML.
     pub height: Sizing,
 }
 
@@ -598,9 +608,15 @@ pub struct FormRadioButton {
     pub value: Smart<EcoString>,
 
     /// The radio button's width.
+    ///
+    /// When `{auto}`, the width defaults to `{1em}` when exporting to a paged
+    /// format, and is unset when exporting to HTML.
     pub width: Smart<Rel<Length>>,
 
     /// The radio button's height.
+    ///
+    /// When `{auto}`, the height defaults to `{1em}` when exporting to a paged
+    /// format, and is unset when exporting to HTML.
     pub height: Sizing,
 
     /// Lets radio buttons access the radio group they are part of.
@@ -743,9 +759,23 @@ pub struct FormTextbox {
     pub spellcheck: Smart<bool>,
 
     /// The field's width.
+    ///
+    /// When `{auto}`, the width defaults to:
+    /// - `{18em}` if this is a single-line field and when exporting to a paged
+    ///   format;
+    /// - `{100%}` if this is a multi-line field and when exporting to a paged
+    ///   format; or
+    /// - unset when exporting to HTML.
     pub width: Smart<Rel<Length>>,
 
     /// The field's height.
+    ///
+    /// When `{auto}`, the height defaults to:
+    /// - sizing according to the current font and text size if this is a
+    ///   single-line field and when exporting to a paged format;
+    /// - `{5em}` if this is a multi-line field and when exporting to a paged
+    ///   format; or
+    /// - unset when exporting to HTML.
     pub height: Sizing,
 }
 
@@ -869,9 +899,19 @@ pub struct FormChoice {
     pub disabled: bool,
 
     /// The field's width.
+    ///
+    /// When `{auto}`, the width defaults to `{10em}` when exporting to a paged
+    /// format, and is unset when exporting to HTML.
     pub width: Smart<Rel<Length>>,
 
     /// The field's height.
+    ///
+    /// When `{auto}`, the height defaults to:
+    /// - sizing according to the current font and text size if this is a
+    ///   dropdown and when exporting to a paged format;
+    /// - sizing according to the number of options if this is a listbox and
+    ///   when exporting to a paged format; or
+    /// - unset when exporting to HTML.
     pub height: Sizing,
 
     /// The selected @form.choice.value[`values`] of this field,
