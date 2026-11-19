@@ -700,17 +700,16 @@ const TABLE_CELL_RULE: ShowFn<TableCell> = |elem, _, _| Ok(elem.body.clone());
 
 const FORM_RULE: ShowFn<FormElem> = |elem, _, styles| {
     elem.assert_not_inside_form(styles)?;
-    let span = elem.span();
     let mut attributes = HtmlAttrs::new();
 
     if let Some(target) = elem.target.get_ref(styles) {
-        attributes.push(attr::action, target.url.clone());
+        attributes.push(attr::action, target.v.url.clone());
 
-        if let Smart::Custom(content_type) = target.content_type {
-            if target.method == HttpMethod::Get && content_type != ContentType::UrlEncoded
+        if let Smart::Custom(content_type) = target.v.content_type {
+            if target.v.method == HttpMethod::Get && content_type != ContentType::UrlEncoded
             {
                 bail!(
-                    span,
+                    target.span,
                     "method `\"get\"` is only supported with content-type `\"url-encoded\"`"
                 );
             }
@@ -720,7 +719,7 @@ const FORM_RULE: ShowFn<FormElem> = |elem, _, styles| {
                 ContentType::Plain => "text/plain",
                 ContentType::Pdf | ContentType::Fdf | ContentType::Xfdf => {
                     bail!(
-                        span,
+                        target.span,
                         "content-type `{}` is not supported in HTML export",
                         content_type.into_value().repr()
                     )
@@ -729,7 +728,7 @@ const FORM_RULE: ShowFn<FormElem> = |elem, _, styles| {
             attributes.push(attr::enctype, content_type);
         }
 
-        let method = match target.method {
+        let method = match target.v.method {
             HttpMethod::Get => "get",
             HttpMethod::Post => "post",
         };
