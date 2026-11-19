@@ -4,7 +4,7 @@ use comemo::Track;
 use ecow::{EcoString, EcoVec, eco_format, eco_vec};
 use rustc_hash::FxHashMap;
 use typst_macros::{Cast, cast};
-use typst_syntax::Span;
+use typst_syntax::{Span, Spanned};
 use typst_utils::singleton;
 
 use crate::diag::{
@@ -167,7 +167,13 @@ pub struct FormElem {
     ///   )
     /// )
     /// ```
-    pub target: Option<FormTarget>,
+    #[parse({
+        // FIXME: this shouldn't be needed, but otherwise fails with
+        // the trait `foundations::cast::FromValue` is not implemented for `typst_syntax::Spanned<FormTarget>`
+        let target: Option<Spanned<FormTarget>> = args.named("target")?;
+        Some(target)
+    })]
+    pub target: Option<Spanned<FormTarget>>,
 
     /// This form, to be inherited by field elements.
     #[internal]
