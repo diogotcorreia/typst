@@ -965,9 +965,9 @@ const FORM_CHOICE_RULE: ShowFn<FormChoice> = |elem, engine, styles| {
 
     let options = elem.options.get_ref(styles);
     let selected_values = elem
-        .value_indexes
+        .value_indices
         .as_ref()
-        .expect_internal("synthesized `value_indexes` not set")
+        .expect_internal("synthesized `value_indices` not set")
         .at(span)?;
     let multiple = elem.multiple.get(styles);
 
