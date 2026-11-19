@@ -294,7 +294,7 @@ e1dd84a3bbe74f2867d4568997582423 for-loop-basic
 048383beb6f1cf690763236ffe5bb795 form-basic-pdf-ua-1
 3cb12dd70841c304c87984d0262a6888 form-button
 332b079cb62c99a468025e6b44d9feba form-checkbox
-7e1ccd3b547659895900c3bf57cf60f5 form-choice
+ce6a4c9d39aa6230c19ac6791521b59e form-choice
 0609e3ffb549b59d97fb7ba05dd85d77 form-choice-non-latin-options
 122acadf3d5d0ac8fbe5c3713cd76965 form-counter
 cf29ce10e0185014d3449d2409c1f5cb form-multiple

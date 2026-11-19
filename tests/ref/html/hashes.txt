@@ -57,7 +57,7 @@ d3d058faae11ef5bc9c02e108552cf22 form-basic-pdf-a-3a
 d6b9817519a59e57ab1d77372ab3fcab form-basic-pdf-ua-1
 a783fb6be28312081a8fc2eb4a5e712a form-button
 cea07b9736184117b29a9200dfc74fad form-checkbox
-427e8ae7fe24ec363b9f989ecd4a7aba form-choice
+180ec7b74784e5d12634d749c3c7bba4 form-choice
 a800cae646abe84dcc16534e60e3df66 form-counter-html-frame
 d8be7380e8386d5eb5bb5af4ab3ece7d form-multiple
 8f93f4b28161fd53f08d4a5f1371f3f1 form-radio

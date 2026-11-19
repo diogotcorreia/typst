@@ -61,24 +61,24 @@
 
 --- form-target-invalid-content-type-html html ---
 // HTML cannot export to FDF, XFDF, nor PDF.
-// Error: 2-67 content-type `"fdf"` is not supported in HTML export
+// Error: 15-64 content-type `"fdf"` is not supported in HTML export
 #form(target: (url: "https://example.com", content-type: "fdf"))[]
-// Error: 2-68 content-type `"xfdf"` is not supported in HTML export
+// Error: 15-65 content-type `"xfdf"` is not supported in HTML export
 #form(target: (url: "https://example.com", content-type: "xfdf"))[]
-// Error: 2-67 content-type `"pdf"` is not supported in HTML export
+// Error: 15-64 content-type `"pdf"` is not supported in HTML export
 #form(target: (url: "https://example.com", content-type: "pdf"))[]
 
 --- form-target-invalid-content-type-pdf pdf ---
 // PDF cannot export to multipart nor plain text.
 // Error is only triggered when there is a submit button.
 
+// Error: 15-70 content-type `"multipart"` is not supported in PDF export
 #form(target: (url: "https://example.com", content-type: "multipart"))[
-  // Error: 4-35 content-type `"multipart"` is not supported in PDF export
   #form.button(action: "submit")[]
 ]
 
+// Error: 15-66 content-type `"plain"` is not supported in PDF export
 #form(target: (url: "https://example.com", content-type: "plain"))[
-  // Error: 4-35 content-type `"plain"` is not supported in PDF export
   #form.button(action: "submit")[]
 ]
 
@@ -86,29 +86,29 @@
 // PDF readers have poor support for all formats that are not FDF.
 // Warning is only triggered when there is a submit button.
 
+// Warning: 15-72 content-type `"url-encoded"` has poor support among PDF readers
+// Hint: 15-72 prefer the `"fdf"` content-type whenever possible
 #form(target: (url: "https://example.com", content-type: "url-encoded"))[
-  // Warning: 4-41 content-type `"url-encoded"` has poor support among PDF readers
-  // Hint: 4-41 prefer the `"fdf"` content-type whenever possible
   #form.button(action: "submit")[Submit]
 ]
 
+// Warning: 15-65 content-type `"xfdf"` has poor support among PDF readers
+// Hint: 15-65 prefer the `"fdf"` content-type whenever possible
 #form(target: (url: "https://example.com", content-type: "xfdf"))[
-  // Warning: 4-41 content-type `"xfdf"` has poor support among PDF readers
-  // Hint: 4-41 prefer the `"fdf"` content-type whenever possible
   #form.button(action: "submit")[Submit]
 ]
 
+// Warning: 15-64 content-type `"pdf"` has poor support among PDF readers
+// Hint: 15-64 prefer the `"fdf"` content-type whenever possible
 #form(target: (url: "https://example.com", content-type: "pdf"))[
-  // Warning: 4-41 content-type `"pdf"` has poor support among PDF readers
-  // Hint: 4-41 prefer the `"fdf"` content-type whenever possible
   #form.button(action: "submit")[Submit]
 ]
 
 --- form-target-method-get-pdf pdf ---
 // PDF cannot use GET method.
 // Error is only triggered when there is a submit button.
+// Error: 15-58 method `"get"` is not supported in PDF export
 #form(target: (url: "https://example.com", method: "get"))[
-  // Error: 4-35 method `"GET"` is not supported in PDF export
   #form.button(action: "submit")[]
 ]
 
@@ -116,9 +116,9 @@
 // HTML can only use GET method on auto/url-encoded.
 #form(target: (url: "https://example.com", method: "get"))[]
 #form(target: (url: "https://example.com", content-type: "url-encoded", method: "get"))[]
-// Error: 2-88 method `"get"` is only supported with content-type `"url-encoded"`
+// Error: 15-85 method `"get"` is only supported with content-type `"url-encoded"`
 #form(target: (url: "https://example.com", content-type: "multipart", method: "get"))[]
-// Error: 2-84 method `"get"` is only supported with content-type `"url-encoded"`
+// Error: 15-81 method `"get"` is only supported with content-type `"url-encoded"`
 #form(target: (url: "https://example.com", content-type: "plain", method: "get"))[]
 
 --- form-label-across-documents bundle ---
@@ -596,7 +596,6 @@
 ]
 
 --- form-transformations paged ---
-
 #form[
   #set scale(reflow: true)
   #set rotate(reflow: true)
@@ -616,7 +615,6 @@
 ]
 
 --- form-transformations-variable-text-rotate pdf ---
-
 #form[
   #form.textbox()
   // Error: 18-32 textboxes and choice fields cannot be scaled, skewed, or rotated when exporting to PDF
@@ -625,7 +623,6 @@
 ]
 
 --- form-transformations-variable-text-scale pdf ---
-
 #form[
   #form.textbox()
   // Error: 17-31 textboxes and choice fields cannot be scaled, skewed, or rotated when exporting to PDF
@@ -634,7 +631,6 @@
 ]
 
 --- form-transformations-variable-text-skew pdf ---
-
 #form[
   #form.choice()
   // Error: 20-33 textboxes and choice fields cannot be scaled, skewed, or rotated when exporting to PDF
@@ -643,7 +639,6 @@
 ]
 
 --- form-nested-fields paged html ---
-
 #form[
   // Hint: 1:4-8:4 the outer form field is here
   // Hint: 1:4-8:4 the outer form field is here
@@ -671,7 +666,6 @@
 ]
 
 --- form-nested-forms paged html ---
-
 // Hint: 1:2-3:2 the outer form is here
 #form[
   // Error: 4-10 this form cannot be inside another form
@@ -679,7 +673,6 @@
 ]
 
 --- form-multiple paged html ---
-
 #form(target: "https://example.com")[
   // Use `.` so that partial field name != fully qualified field name
   #form.checkbox(name: "checkbox.1")
@@ -715,7 +708,6 @@
 ]
 
 --- form-button paged html ---
-
 #form[
   #form.button[No action]
   #form.button(name: "custom-name")[Custom name]
@@ -725,7 +717,6 @@
 ]
 
 --- form-checkbox paged html ---
-
 #form[
   #form.label(<cb>)[Unchecked:]
   #form.checkbox() <cb>
@@ -750,7 +741,6 @@
 ]
 
 --- form-radio paged html ---
-
 #form[
   Without title:
   #form.radio-group(selected: <radio-1>)[
@@ -781,7 +771,6 @@
 ]
 
 --- form-textbox paged html ---
-
 #set form.textbox(width: 100pt)
 
 #form[
@@ -811,7 +800,6 @@
 ]
 
 --- form-choice paged html ---
-
 #form[
   #let options = ("opt1": "Option 1", "opt2": "Option 2", "opt3": "Option 3")
   #set form.choice(options: options)
@@ -823,7 +811,10 @@
   #form.choice(value: "opt2") <dd-value>
 
   #form.label(<dd-required>)[Dropdown with required:]
-  #form.choice(required: true, width: 60pt, height: 30pt) <dd-required>
+  #form.choice(required: true) <dd-required>
+
+  #form.label(<dd-custom-size>)[Dropdown with custom size:]
+  #form.choice(width: 60pt, height: 30pt) <dd-custom-size>
 
   #form.label(<dd-disabled>)[Dropdown with disabled:]
   #form.choice(value: "opt1", disabled: true) <dd-disabled>
@@ -838,14 +829,16 @@
   #form.choice(multiple: true, value: ("opt1", "opt3")) <lb-values>
 
   #form.label(<lb-required>)[Listbox with required:]
-  #form.choice(multiple: true, required: true, width: 60pt, height: 30pt) <lb-required>
+  #form.choice(multiple: true, required: true) <lb-required>
+
+  #form.label(<lb-custom-size>)[Listbox with custom size:]
+  #form.choice(multiple: true, width: 60pt, height: 30pt) <lb-custom-size>
 
   #form.label(<lb-disabled>)[Listbox with disabled:]
   #form.choice(multiple: true, value: "opt1", disabled: true) <lb-disabled>
 ]
 
 --- form-bundle bundle ---
-
 #document("index.html")[
   #form[
     #form.label(<cb-1>)[Checkbox:]

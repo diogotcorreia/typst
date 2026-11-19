@@ -296,7 +296,7 @@ a06aab3d3484f5fb88103db01e5e0654 footnote-styling
 6ad37cd153f37bb52560bee2a2aaaa58 form-basic-pdf-ua-1
 9e337a5f36647bf2831a39d53a6b0713 form-button
 0d0c33c52334bb75070a875ca106cd54 form-checkbox
-93cc9c01c8dc1d1c21febd0fba34dee7 form-choice
+074418261dca5b902a3d63379caffb1b form-choice
 fe4e86d7617c57ab17aa0d5acb612db7 form-choice-non-latin-options
 db0003ad59ff1cebb47c8cf91a4d5562 form-counter
 b09ea7eca8a815e659c31db4d62e48ed form-multiple
