@@ -75,9 +75,9 @@ use crate::visualize::{CircleElem, Paint, RectElem};
 /// visible to sighted users and announced for users of AT.
 /// We strongly recommend that all fields have an associated @form.label.
 ///
-/// Furthermore, the @form.radio-group[radio group]'s @form.radio-group.title[`title`]
-/// property can also be used to describe the entire group, and is preferred
-/// over the generic @form.label element.
+/// However, @form.radio-group[radio groups] cannot be described via @form.label
+/// and must instead use the group's @form.radio-group.title[`title`]
+/// argument.
 ///
 /// = Compatibility <compatibility>
 ///
@@ -915,10 +915,10 @@ pub struct FormChoice {
     pub height: Sizing,
 
     /// The selected @form.choice.value[`values`] of this field,
-    /// but represented as indexes of @form.choice.options[`options`].
+    /// but represented as indices of @form.choice.options[`options`].
     #[internal]
     #[synthesized]
-    pub value_indexes: EcoVec<usize>,
+    pub value_indices: EcoVec<usize>,
 }
 
 impl ShowSet for Packed<FormChoice> {
@@ -945,10 +945,10 @@ impl Synthesize for Packed<FormChoice> {
 
         let mut seen_options = FxHashMap::default();
         for (i, option) in self.options.get_ref(styles).0.iter().enumerate() {
-            if seen_options.insert(option.mapping_name.as_str(), i).is_some() {
+            if let Some(prev) = seen_options.insert(option.mapping_name.as_str(), i) {
                 bail!(
-                    span, "duplicate option";
-                    hint: "occurred in option at index {i} (`{}`)", option.mapping_name.repr();
+                    span, "duplicate option `{}`", option.mapping_name.repr();
+                    hint: "occurred in options at index {prev} and {i}";
                 )
             }
         }
@@ -961,7 +961,7 @@ impl Synthesize for Packed<FormChoice> {
                 hint: "set `multiple` to `true` or set only a single value for this field";
             )
         }
-        self.value_indexes = Some(value.iter().map(|v| {
+        self.value_indices = Some(value.iter().map(|v| {
             seen_options.get(v.as_str()).copied().ok_or_else(||{
                 eco_vec![error!(
                     span, "unknown value `{}`", v.repr();
@@ -1077,6 +1077,12 @@ impl ShowSet for Packed<FormSignature> {
 #[elem(name = "label", since = "unreleased", Locatable)]
 pub struct FormLabel {
     /// The form field that this label describes.
+    ///
+    /// The following elements can be targeted by a form label:
+    /// @form.button, @form.checkbox, @form.radio, @form.textbox, @form.choice,
+    /// and @form.signature. Notably, @form.radio-group[radio groups] cannot
+    /// and their @form.radio-group.title[`title` argument] should be used to
+    /// describe them instead.
     #[required]
     pub target: Label,
 
@@ -1096,7 +1102,18 @@ impl FormLabel {
             .introspect(QueryLabelIntrospection(self.target, span))
             .at(span)?;
         if !labelable_element_selector().matches(&elem, None) {
-            bail!(span, "label `{}` does not point to a form field", self.target.repr())
+            if elem.is::<FormRadioGroup>() {
+                bail!(
+                    span, "label `{}` cannot point to a radio group", self.target.repr();
+                    hint: "use the radio group's `title` argument instead";
+                )
+            } else {
+                bail!(
+                    span,
+                    "label `{}` does not point to a form field",
+                    self.target.repr()
+                )
+            }
         }
         Ok(elem.location().unwrap())
     }
@@ -1340,7 +1357,6 @@ fn labelable_element_selector() -> &'static Selector {
         Selector::Or(eco_vec![
             FormButton::ELEM.select(),
             FormCheckbox::ELEM.select(),
-            FormRadioGroup::ELEM.select(),
             FormRadioButton::ELEM.select(),
             FormTextbox::ELEM.select(),
             FormChoice::ELEM.select(),
