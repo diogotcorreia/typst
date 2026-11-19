@@ -302,7 +302,7 @@ db0003ad59ff1cebb47c8cf91a4d5562 form-counter
 b09ea7eca8a815e659c31db4d62e48ed form-multiple
 24154ee2cc572a9ac376f0ccc3e2e489 form-partial-field-names
 c18e00ab960e0b903d5ea81e952d2482 form-place-circle-on-textbox
-1e291ea234d5e0c738ae487ba79b9bfd form-radio
+a815ac74b083c4c2da728b5cf55407be form-radio
 a204b51dbcaf569c3ec7ae16fd54150a form-radio-group-non-latin-values
 f3c964a107c591aed58624bd9404dc69 form-target-warning-content-type-pdf
 a7772440913e29e5e8a940e23433b92f form-textbox

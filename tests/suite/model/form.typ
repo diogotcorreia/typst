@@ -216,8 +216,8 @@
 
 --- form-choice-duplicate-options paged html ---
 #form[
-  // Error: 1:4-3:4 duplicate option
-  // Hint: 1:4-3:4 occurred in option at index 2 (`"foo"`)
+  // Error: 1:4-3:4 duplicate option `"foo"`
+  // Hint: 1:4-3:4 occurred in options at index 0 and 2
   #form.choice(
     options: ("foo", "bar", "foo", "baz"),
   )
@@ -288,16 +288,18 @@
 #form[
   // Hint: 4-30 the other field is here
   #form.checkbox(name: "foo")
-  // Error: 4-30 two fields share the same name ("foo")
+  // Error: 4-30 two distinct form fields are named `"foo"`
   // Hint: 4-30 change the name of one of the fields
   #form.checkbox(name: "foo")
 ]
 
 --- form-duplicate-fully-qualified-field-names pdf ---
 #form[
-  // Error: 4-34 there are two distinct form fields named `foo.bar`
-  // Hint: 4-34 this can happen if you have a field named `foo.bar` and another named `foo.bar.something-else`
+  // Error: 4-34 two distinct form fields are named `"foo.bar"`
+  // Hint: 4-34 this can happen even if one is named `"foo.bar"` and the other `"foo.bar.baz"`
+  // Hint: 4-34 change the names so that the dot-separated segments do not overlap
   #form.checkbox(name: "foo.bar")
+  // Hint: 4-38 the other field is here
   #form.checkbox(name: "foo.bar.baz")
 ]
 
@@ -330,9 +332,8 @@
 
 #form[
   // Error: 4-18 PDF/UA-1 error: missing alt name
-  // Hint: 4-18 make sure your form fields have a label
   // Hint: 4-18 add a `#form.label` that points to this field
-  // Hint: 4-18 for `#form.radio-group`, you can set the `title` property instead
+  // Hint: 4-18 for `#form.radio-group`, you must set the `title` property instead
   #form.textbox()
 ]
 
@@ -649,20 +650,20 @@
   // Hint: 1:4-8:4 the outer form field is here
   // Hint: 1:4-8:4 the outer form field is here
   #form.button[
-    // Error: 6-34 this checkbox element cannot be inside a form field
+    // Error: 6-34 checkbox element cannot occur inside of another form field
     #form.checkbox(checked: true)
     #form.radio-group[
-      // Error: 8-20 this radio element cannot be inside a form field
+      // Error: 8-20 radio element cannot occur inside of another form field
       #form.radio()
     ]
-    // Error: 6-20 this textbox element cannot be inside a form field
+    // Error: 6-20 textbox element cannot occur inside of another form field
     #form.textbox()
-    // Error: 6-19 this choice element cannot be inside a form field
+    // Error: 6-19 choice element cannot occur inside of another form field
     #form.choice()
   ]
 
   #show form.checkbox: [
-    // Error: 6-19 this button element cannot be inside a form field
+    // Error: 6-19 button element cannot occur inside of another form field
     #form.button[]
   ]
   // Hint: 4-19 the outer form field is here
@@ -751,32 +752,32 @@
 --- form-radio paged html ---
 
 #form[
-  #form.label(<rg>)[Without title:]
+  Without title:
   #form.radio-group(selected: <radio-1>)[
     #form.radio(value: "foo") <radio-1>
     #form.label(<radio-1>)[Option 1]
 
     #form.radio() <radio-2>
     #form.label(<radio-2>)[Option 2]
-  ] <rg>
+  ]
 
-  #form.label(<rg-title>)[With title and required:]
+  With title and required:
   #form.radio-group(required: true, title: [This is a title])[
     #form.radio() <radio-3>
     #form.label(<radio-3>)[Option 1]
 
     #form.radio(width: 15pt, height: 20pt) <radio-4>
     #form.label(<radio-4>)[Option 2]
-  ] <rg-title>
+  ]
 
-  #form.label(<rg-disabled>)[Disabled:]
+  Disabled:
   #form.radio-group(disabled: true)[
     #form.radio() <radio-5>
     #form.label(<radio-5>)[Option 1]
 
     #form.radio() <radio-6>
     #form.label(<radio-6>)[Option 2]
-  ] <rg-disabled>
+  ]
 ]
 
 --- form-textbox paged html ---
