@@ -1336,7 +1336,7 @@ pub enum FontType {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum WidgetAction {
     /// Submit all fields in a form to a given URL.
-    Submit { form: Location, target: FormTarget },
+    Submit { form: Location, target: Spanned<FormTarget> },
     /// Reset all fields in the form to their default value.
     Reset { form: Location },
 }

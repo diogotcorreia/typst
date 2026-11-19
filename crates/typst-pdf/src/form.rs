@@ -434,14 +434,14 @@ impl WidgetAnnotation {
                 WidgetAction::Submit { form, target } => {
                     let fields = get_fields(*form)?;
 
-                    if target.method == HttpMethod::Get {
+                    if target.v.method == HttpMethod::Get {
                         bail!(
-                            self.span,
-                            "method `\"GET\"` is not supported in PDF export"
+                            target.span,
+                            "method `\"get\"` is not supported in PDF export"
                         )
                     }
 
-                    let content_type = target.content_type.unwrap_or(ContentType::Fdf);
+                    let content_type = target.v.content_type.unwrap_or(ContentType::Fdf);
                     let format = match content_type {
                         ContentType::Fdf => SubmissionFormat::Fdf,
                         ContentType::UrlEncoded => {
@@ -451,7 +451,7 @@ impl WidgetAnnotation {
                         ContentType::Pdf => SubmissionFormat::Pdf,
                         ContentType::Multipart | ContentType::Plain => {
                             bail!(
-                                self.span,
+                                target.span,
                                 "content-type `{}` is not supported in PDF export",
                                 content_type.into_value().repr()
                             )
@@ -463,13 +463,13 @@ impl WidgetAnnotation {
                         ContentType::UrlEncoded | ContentType::Xfdf | ContentType::Pdf
                     ) {
                         gc.warnings.push(warning!(
-                            self.span,
+                            target.span,
                             "content-type `{}` has poor support among PDF readers", content_type.into_value().repr();
                             hint: "prefer the `\"fdf\"` content-type whenever possible"
                         ));
                     }
 
-                    Ok(SubmitFormAction::new(target.url.to_string())
+                    Ok(SubmitFormAction::new(target.v.url.to_string())
                         .with_fields(ActionFieldFilter::Include(fields))
                         .with_format(format)
                         .into())
