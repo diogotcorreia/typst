@@ -1,13 +1,10 @@
-use ecow::EcoVec;
 use krilla::configure::{Accessibility, PdfVersion};
 use krilla::geom as kg;
 use krilla::page::Page;
 use krilla::surface::Surface;
 use krilla::tagging::{Artifact, ArtifactType, ContentTag, SpanTag};
 use typst_layout::PagedDocument;
-use typst_library::diag::{
-    At, CollectCombinedResult, ExpectInternal, SourceDiagnostic, SourceResult,
-};
+use typst_library::diag::{At, CollectCombinedResult, ExpectInternal, SourceResult};
 use typst_library::format::Complete;
 use typst_library::foundations::Smart;
 use typst_library::layout::{FrameParent, Point, Rect, Size};
@@ -182,12 +179,11 @@ pub fn add_widget_annotations(
     gc: &mut GlobalContext,
     page: &mut Page,
     annotations: impl Iterator<Item = WidgetAnnotation>,
-    warnings: &mut EcoVec<SourceDiagnostic>,
 ) -> SourceResult<()> {
     annotations
         .map(|annot| {
             let annot_id = annot.annotation_id;
-            let action = annot.get_krilla_action(gc, warnings)?;
+            let action = annot.get_krilla_action(gc)?;
             let identifier = gc
                 .acro_form
                 .get_field_mut(annot.field_location)

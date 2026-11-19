@@ -390,7 +390,7 @@ fn progress_tree_start(tree: &mut TreeBuilder, elem: &Content) -> GroupId {
         || elem.is::<FormChoice>()
         || elem.is::<FormSignature>()
     {
-        push_group(tree, elem, GroupKind::FormField(elem.span(), None))
+        push_group(tree, elem, GroupKind::FormField(None))
     } else if let Some(_) = elem.to_packed::<TitleElem>() {
         push_tag(tree, elem, Tag::Title)
     } else if let Some(entry) = elem.to_packed::<OutlineEntry>() {

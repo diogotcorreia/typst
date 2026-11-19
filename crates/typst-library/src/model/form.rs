@@ -370,7 +370,7 @@ impl ShowSet for Packed<FormButton> {
         out.set(FormWidget::parent, Some(elem));
 
         let disabled = self.disabled.get(styles);
-        styles::set_rect_stroke(&mut out, disabled);
+        styles::set_inner_stroke(&mut out, disabled);
         if disabled {
             styles::set_disabled_styles(&mut out);
         }
@@ -438,7 +438,7 @@ impl ShowSet for Packed<FormCheckbox> {
         out.set(FormWidget::parent, Some(self.clone().pack()));
 
         let disabled = self.disabled.get(styles);
-        styles::set_rect_stroke(&mut out, disabled);
+        styles::set_inner_stroke(&mut out, disabled);
         if disabled {
             styles::set_disabled_styles(&mut out);
         }
@@ -931,7 +931,7 @@ impl ShowSet for Packed<FormChoice> {
         out.set(FormWidget::parent, Some(elem));
 
         let disabled = self.disabled.get(styles);
-        styles::set_rect_stroke(&mut out, disabled);
+        styles::set_inner_stroke(&mut out, disabled);
         if disabled {
             styles::set_disabled_styles(&mut out);
         }
@@ -1058,7 +1058,7 @@ impl ShowSet for Packed<FormSignature> {
         elem.materialize(styles);
         out.set(FormWidget::parent, Some(elem));
 
-        styles::set_rect_stroke(&mut out, false);
+        styles::set_inner_stroke(&mut out, false);
         out
     }
 }
@@ -1149,7 +1149,7 @@ pub fn assert_not_inside_form_field<T: NativeElement>(
     {
         bail!(
             elem.span(),
-            "this {} element cannot be inside a form field", T::ELEM.name();
+            "{} element cannot occur inside of another form field", T::ELEM.name();
             hint[parent.span()]: "the outer form field is here";
         )
     }
@@ -1216,7 +1216,7 @@ impl<T> FieldAppearanceKind<T> {
     pub fn active_body(&self) -> &FieldAppearanceBody<T> {
         match self {
             Self::Single { body, .. } => body,
-            Self::Dual { active, body_on, .. } if *active => body_on,
+            Self::Dual { active: true, body_on, .. } => body_on,
             Self::Dual { body_off, .. } => body_off,
         }
     }
@@ -1504,7 +1504,7 @@ pub mod styles {
 
     /// Set the stroke and accompanying outset/inset for a form field
     /// that is surrounded by a [`RectElem`].
-    pub(super) fn set_rect_stroke(styles: &mut Styles, disabled: bool) {
+    pub(super) fn set_inner_stroke(styles: &mut Styles, disabled: bool) {
         styles.set(
             RectElem::outset,
             Sides::splat(Some(Abs::pt(-STROKE_THICKNESS_PT / 2.0).into())),

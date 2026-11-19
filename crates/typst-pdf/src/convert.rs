@@ -86,10 +86,11 @@ pub fn convert(
         named_destinations,
         page_index_converter,
         tags,
+        warnings,
         acro_form,
     );
 
-    convert_pages(&mut gc, &mut document, warnings)?;
+    convert_pages(&mut gc, &mut document)?;
     attach_files(&gc, &mut document)?;
     let (doc_lang, tree) = tags::resolve(&mut gc)?;
 
@@ -104,11 +105,7 @@ pub fn convert(
     finish(document, gc)
 }
 
-fn convert_pages(
-    gc: &mut GlobalContext,
-    document: &mut Document,
-    warnings: &mut EcoVec<SourceDiagnostic>,
-) -> SourceResult<()> {
+fn convert_pages(gc: &mut GlobalContext, document: &mut Document) -> SourceResult<()> {
     for (i, typst_page) in gc.document.pages().iter().enumerate() {
         if gc.page_index_converter.pdf_page_index(i).is_none() {
             // Don't export this page.
@@ -183,12 +180,7 @@ fn convert_pages(
         tags::add_link_annotations(gc, &mut page, link_annotations);
 
         let widget_annotations = fc.widget_annotations;
-        tags::add_widget_annotations(
-            gc,
-            &mut page,
-            widget_annotations.into_iter(),
-            warnings,
-        )?;
+        tags::add_widget_annotations(gc, &mut page, widget_annotations.into_iter())?;
     }
 
     Ok(())
@@ -327,11 +319,14 @@ pub(crate) struct GlobalContext<'a> {
     pub(crate) page_index_converter: PageIndexConverter,
     /// Tagged PDF context.
     pub(crate) tags: Tags,
+    /// Warnings generated while producing the output.
+    pub(crate) warnings: &'a mut EcoVec<SourceDiagnostic>,
     /// Form fields.
     pub(crate) acro_form: AcroForm,
 }
 
 impl<'a> GlobalContext<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         document: &'a PagedDocument,
         options: &'a PdfOptions<Complete>,
@@ -339,6 +334,7 @@ impl<'a> GlobalContext<'a> {
         loc_to_names: FxHashMap<Location, NamedDestination>,
         page_index_converter: PageIndexConverter,
         tags: Tags,
+        warnings: &'a mut EcoVec<SourceDiagnostic>,
         acro_form: AcroForm,
     ) -> GlobalContext<'a> {
         Self {
@@ -352,6 +348,7 @@ impl<'a> GlobalContext<'a> {
             image_spans: FxHashSet::default(),
             page_index_converter,
             tags,
+            warnings,
             acro_form,
         }
     }
@@ -403,7 +400,7 @@ pub(crate) fn handle_frame(
             }
             FrameItem::Link(dest, size) => handle_link(fc, gc, dest, *size)?,
             FrameItem::FormField(widget) => {
-                handle_field_widget(fc, gc, surface, widget)?;
+                handle_field_widget(gc, fc, surface, widget)?;
             }
             FrameItem::Tag(Tag::Start(_, flags)) => {
                 if flags.tagged {
@@ -767,9 +764,8 @@ fn convert_validation_error(
             let span = to_span(*loc);
             error!(
                 span, "{prefix} missing alt name";
-                hint: "make sure your form fields have a label";
                 hint: "add a `#form.label` that points to this field";
-                hint: "for `#form.radio-group`, you can set the `title` property instead";
+                hint: "for `#form.radio-group`, you must set the `title` property instead";
             )
         }
         ValidationError::NoDocumentLanguage => error!(

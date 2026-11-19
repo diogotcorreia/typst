@@ -70,8 +70,7 @@ impl Tree {
     pub fn parent_form_field(&self) -> Option<(GroupId, Span)> {
         let current = self.current();
         let group = self.groups.get(current);
-        let span = group.kind.as_form_field()?;
-        Some((current, span))
+        group.kind.is_form_field().then_some((current, group.span))
     }
 
     /// Find the highest artifact ancestor in the tree.

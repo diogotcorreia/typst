@@ -450,7 +450,7 @@ pub enum GroupKind {
     Image(Packed<ImageElem>, BBoxId, Option<Locale>),
     Formula(Packed<EquationElem>, BBoxId, Option<Locale>),
     Link(Packed<LinkMarker>, Option<Locale>),
-    FormField(Span, Option<Locale>),
+    FormField(Option<Locale>),
     CodeBlock(Option<Locale>),
     CodeBlockLine(Option<Locale>),
     /// Whether this paragraph is a `weak` pragraph that is omitted when it
@@ -507,6 +507,10 @@ impl GroupKind {
         matches!(self, Self::Link(..))
     }
 
+    pub fn is_form_field(&self) -> bool {
+        matches!(self, Self::FormField(..))
+    }
+
     pub fn is_figure(&self) -> bool {
         matches!(self, Self::Figure(..) | Self::Image(..))
     }
@@ -547,10 +551,6 @@ impl GroupKind {
 
     pub fn as_link(&self) -> Option<&Packed<LinkMarker>> {
         if let Self::Link(v, ..) = self { Some(v) } else { None }
-    }
-
-    pub fn as_form_field(&self) -> Option<Span> {
-        if let Self::FormField(span, ..) = self { Some(*span) } else { None }
     }
 
     pub fn as_table(&self) -> Option<TableId> {
@@ -600,7 +600,7 @@ impl GroupKind {
             GroupKind::Image(_, _, lang) => lang,
             GroupKind::Formula(_, _, lang) => lang,
             GroupKind::Link(_, lang) => lang,
-            GroupKind::FormField(_, lang) => lang,
+            GroupKind::FormField(lang) => lang,
             GroupKind::CodeBlock(lang) => lang,
             GroupKind::CodeBlockLine(lang) => lang,
             GroupKind::Par(lang) => lang,
@@ -634,7 +634,7 @@ impl GroupKind {
             GroupKind::Image(_, _, lang) => lang,
             GroupKind::Formula(_, _, lang) => lang,
             GroupKind::Link(_, lang) => lang,
-            GroupKind::FormField(_, lang) => lang,
+            GroupKind::FormField(lang) => lang,
             GroupKind::CodeBlock(lang) => lang,
             GroupKind::CodeBlockLine(lang) => lang,
             GroupKind::Par(lang) => lang,

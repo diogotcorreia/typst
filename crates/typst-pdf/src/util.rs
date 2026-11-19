@@ -248,20 +248,14 @@ pub(crate) fn bounding_box(fc: &FrameContext, size: Size) -> Rect {
         pos,
     ];
 
-    let mut min_x = Abs::inf();
-    let mut min_y = Abs::inf();
-    let mut max_x = -Abs::inf();
-    let mut max_y = -Abs::inf();
+    let mut min = Point::splat(Abs::inf());
+    let mut max = Point::splat(-Abs::inf());
 
     for point in points {
         let p = point.transform(fc.state().transform());
-        min_x = min_x.min(p.x);
-        min_y = min_y.min(p.y);
-        max_x = max_x.max(p.x);
-        max_y = max_y.max(p.y);
+        min = min.min(p);
+        max = max.max(p);
     }
 
-    let min = Point::new(min_x, min_y);
-    let max = Point::new(max_x, max_y);
     Rect::new(min, max)
 }

@@ -792,9 +792,9 @@ const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, engine, styles| {
                 .expect_internal("form choice field is not FormChoice")
                 .at(span)?;
             choice_field
-                .value_indexes
+                .value_indices
                 .as_ref()
-                .expect_internal("synthesized `value_indexes` not set")
+                .expect_internal("synthesized `value_indices` not set")
                 .at(span)?
                 .clone()
         };

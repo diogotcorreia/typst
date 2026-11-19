@@ -1,7 +1,7 @@
-use std::iter::Peekable;
+use std::collections::HashMap;
 
 use az::SaturatingAs;
-use ecow::{EcoString, EcoVec};
+use ecow::EcoString;
 use indexmap::IndexMap;
 use krilla::action::{
     Action, ActionFieldFilter, ResetFormAction, SubmissionFormat, SubmitFormAction,
@@ -15,10 +15,10 @@ use krilla::stream::Stream;
 use krilla::surface::Surface;
 use krilla::tagging::Identifier;
 use krilla::text::StandardFont;
-use rustc_hash::{FxBuildHasher, FxHashMap};
+use rustc_hash::FxBuildHasher;
 use typst_layout::PagedDocument;
 use typst_library::diag::{
-    At, ExpectInternal, SourceDiagnostic, SourceResult, bail, panic_internal, warning,
+    At, ExpectInternal, SourceResult, bail, panic_internal, warning,
 };
 use typst_library::foundations::{Content, IntoValue, NativeElement, Repr, StyleChain};
 use typst_library::introspection::{Introspector, Location};
@@ -40,8 +40,6 @@ use crate::util::{AbsExt, RectExt, TransformExt, bounding_box};
 pub(crate) struct Field {
     /// The full name of the field (i.e., possibly including periods `.`).
     name: EcoString,
-    /// The location of the form this fields belongs to.
-    form_location: Location,
     /// The span of the element defining this field.
     span: Span,
     /// The underlying krilla field.
@@ -51,14 +49,13 @@ pub(crate) struct Field {
 impl Field {
     pub(crate) fn new(
         document: &PagedDocument,
-        form_location: Location,
         field: Content,
         name_generator: impl FnOnce() -> EcoString,
     ) -> SourceResult<Self> {
         let styles = StyleChain::default();
         let span = field.span();
 
-        let get_alt_text = || {
+        let get_alt_name = || {
             field
                 .label()
                 .map(|label| {
@@ -97,7 +94,7 @@ impl Field {
 
             let krilla_field = kf::FormField::checkbox(partial_name, checked)
                 .with_location(Some(span.into_raw()))
-                .with_alt_name(get_alt_text())
+                .with_alt_name(get_alt_name())
                 .with_default_checked(checked)
                 .with_required(required)
                 .with_read_only(read_only);
@@ -129,7 +126,7 @@ impl Field {
                         .get_ref(styles)
                         .as_ref()
                         .map(|elem| elem.plain_text().to_string())
-                        .unwrap_or_else(get_alt_text),
+                        .unwrap_or_default(),
                 )
                 .with_default_value(selected)
                 .with_required(required)
@@ -151,7 +148,7 @@ impl Field {
 
             let mut krilla_field = kf::FormField::text(partial_name)
                 .with_location(Some(span.into_raw()))
-                .with_alt_name(get_alt_text())
+                .with_alt_name(get_alt_name())
                 .with_mutliline(multiline)
                 .with_required(required)
                 .with_read_only(read_only)
@@ -172,9 +169,9 @@ impl Field {
 
             let multiple = choice_field.multiple.get(styles);
             let value = choice_field
-                .value_indexes
+                .value_indices
                 .as_ref()
-                .expect_internal("synthesized `value_indexes` not set")
+                .expect_internal("synthesized `value_indices` not set")
                 .at(span)?;
             let required = choice_field.required.get(styles);
             let read_only = choice_field.disabled.get(styles);
@@ -194,7 +191,7 @@ impl Field {
             let krilla_field = if multiple {
                 kf::FormField::listbox(partial_name)
                     .with_location(Some(span.into_raw()))
-                    .with_alt_name(get_alt_text())
+                    .with_alt_name(get_alt_name())
                     .with_value(value.to_vec())
                     .with_default_value(value.to_vec())
                     .with_options(options)
@@ -205,7 +202,7 @@ impl Field {
             } else {
                 let mut krilla_field = kf::FormField::combobox(partial_name)
                     .with_location(Some(span.into_raw()))
-                    .with_alt_name(get_alt_text())
+                    .with_alt_name(get_alt_name())
                     .with_options(options)
                     .with_required(required)
                     .with_read_only(read_only);
@@ -224,14 +221,14 @@ impl Field {
 
             let krilla_field = kf::FormField::signature(partial_name)
                 .with_location(Some(span.into_raw()))
-                .with_alt_name(get_alt_text());
+                .with_alt_name(get_alt_name());
 
             (name, krilla_field.into())
         } else {
             panic_internal("unknown field type").at(field.span())?
         };
 
-        Ok(Self { name, form_location, span, krilla_field })
+        Ok(Self { name, span, krilla_field })
     }
 
     pub(crate) fn insert_annotation(
@@ -256,7 +253,7 @@ impl Field {
                     widget.set_down_appearance(down);
                 }
 
-                Self::insert_annotation_inner(span, page, form_field, widget, action)?
+                insert_annotation(span, page, form_field, widget, action)?
             }
             kf::FieldKind::Checkbox(form_field) => {
                 let (body_off, body_on) = annotation
@@ -282,7 +279,7 @@ impl Field {
                     widget.set_on_down_appearance(down);
                 }
 
-                Self::insert_annotation_inner(span, page, form_field, widget, action)?
+                insert_annotation(span, page, form_field, widget, action)?
             }
             kf::FieldKind::Radio(form_field) => {
                 let value = annotation
@@ -314,7 +311,7 @@ impl Field {
                     widget.set_on_down_appearance(down);
                 }
 
-                Self::insert_annotation_inner(span, page, form_field, widget, action)?
+                insert_annotation(span, page, form_field, widget, action)?
             }
             kf::FieldKind::Text(form_field) => {
                 if let Some(ap) = annotation.get_krilla_variable_appearance()? {
@@ -327,7 +324,7 @@ impl Field {
                     .at(span)?;
                 let widget = form_field.new_widget(annotation.bbox, body.normal);
 
-                Self::insert_annotation_inner(span, page, form_field, widget, action)?
+                insert_annotation(span, page, form_field, widget, action)?
             }
             kf::FieldKind::ListBox(form_field) => {
                 if let Some(ap) = annotation.get_krilla_variable_appearance()? {
@@ -340,7 +337,7 @@ impl Field {
                     .at(span)?;
                 let widget = form_field.new_widget(annotation.bbox, body.normal);
 
-                Self::insert_annotation_inner(span, page, form_field, widget, action)?
+                insert_annotation(span, page, form_field, widget, action)?
             }
             kf::FieldKind::ComboBox(form_field) => {
                 if let Some(ap) = annotation.get_krilla_variable_appearance()? {
@@ -353,7 +350,7 @@ impl Field {
                     .at(span)?;
                 let widget = form_field.new_widget(annotation.bbox, body.normal);
 
-                Self::insert_annotation_inner(span, page, form_field, widget, action)?
+                insert_annotation(span, page, form_field, widget, action)?
             }
             kf::FieldKind::Signature(form_field) => {
                 let body = annotation
@@ -363,31 +360,30 @@ impl Field {
                     .at(span)?;
                 let widget = form_field.new_widget(annotation.bbox, body.normal);
 
-                Self::insert_annotation_inner(span, page, form_field, widget, action)?
+                insert_annotation(span, page, form_field, widget, action)?
             }
         };
 
         Ok(identifier)
     }
+}
 
-    fn insert_annotation_inner<FT, A>(
-        span: Span,
-        page: &mut Page,
-        form_field: &mut kf::FormField<FT>,
-        mut widget: ka::WidgetAnnotation<A>,
-        action: Option<Action>,
-    ) -> SourceResult<Identifier>
-    where
-        ka::WidgetAnnotation<A>: Into<ka::WidgetAnnotationKind>,
-    {
-        if let Some(action) = action {
-            widget.set_action_mouse_press(action);
-        }
-
-        let annotation =
-            ka::Annotation::from(widget).with_location(Some(span.into_raw()));
-        Ok(page.add_widget_annotation(form_field, annotation))
+fn insert_annotation<FT, A>(
+    span: Span,
+    page: &mut Page,
+    form_field: &mut kf::FormField<FT>,
+    mut widget: ka::WidgetAnnotation<A>,
+    action: Option<Action>,
+) -> SourceResult<Identifier>
+where
+    ka::WidgetAnnotation<A>: Into<ka::WidgetAnnotationKind>,
+{
+    if let Some(action) = action {
+        widget.set_action_mouse_press(action);
     }
+
+    let annotation = ka::Annotation::from(widget).with_location(Some(span.into_raw()));
+    Ok(page.add_widget_annotation(form_field, annotation))
 }
 
 /// A widget annotation containing appearance streams.
@@ -419,24 +415,24 @@ impl WidgetAnnotation {
     pub fn get_krilla_action(
         &self,
         gc: &mut GlobalContext,
-        warnings: &mut EcoVec<SourceDiagnostic>,
     ) -> SourceResult<Option<Action>> {
-        let get_fields = |form_location| {
-            gc.acro_form
-                .fields
-                .values()
-                .filter(|field| field.form_location == form_location)
+        let get_fields = |form_location| -> SourceResult<Vec<String>> {
+            Ok(gc
+                .acro_form
+                .get_field_iter_of_form(form_location)
+                .expect_internal("cannot find form with given location")
+                .at(self.span)?
                 .filter(|field| {
                     !matches!(field.krilla_field, kf::FieldKind::PushButton(_))
                 })
-                .map(|filter| filter.name.to_string())
-                .collect::<Vec<_>>()
+                .map(|field| field.name.to_string())
+                .collect())
         };
         self.action
             .as_ref()
             .map(|action| match action {
                 WidgetAction::Submit { form, target } => {
-                    let fields = get_fields(*form);
+                    let fields = get_fields(*form)?;
 
                     if target.method == HttpMethod::Get {
                         bail!(
@@ -466,7 +462,7 @@ impl WidgetAnnotation {
                         content_type,
                         ContentType::UrlEncoded | ContentType::Xfdf | ContentType::Pdf
                     ) {
-                        warnings.push(warning!(
+                        gc.warnings.push(warning!(
                             self.span,
                             "content-type `{}` has poor support among PDF readers", content_type.into_value().repr();
                             hint: "prefer the `\"fdf\"` content-type whenever possible"
@@ -479,7 +475,7 @@ impl WidgetAnnotation {
                         .into())
                 }
                 WidgetAction::Reset { form } => {
-                    let fields = get_fields(*form);
+                    let fields = get_fields(*form)?;
                     Ok(ResetFormAction::new(ActionFieldFilter::Include(fields)).into())
                 }
             })
@@ -511,8 +507,8 @@ impl WidgetAnnotation {
 }
 
 pub(crate) fn handle_field_widget(
-    fc: &mut FrameContext,
     gc: &mut GlobalContext,
+    fc: &mut FrameContext,
     surface: &mut Surface,
     widget: &FieldWidget,
 ) -> SourceResult<()> {
@@ -661,8 +657,6 @@ fn get_standard_font(
 
 type FieldGroup = IndexMap<EcoString, Node, FxBuildHasher>;
 
-// TODO: is it worth optimizing allocations by using indexes and SmallVec instead?; krilla uses this
-// layout anyway already
 // Allow unbalanced enum under the assumption there are way more Leafs than Groups
 // under normal use.
 #[allow(clippy::large_enum_variant)]
@@ -671,49 +665,68 @@ enum Node {
     Leaf(Field),
 }
 
+impl Node {
+    fn get_first_leaf(&self) -> Option<&Field> {
+        match self {
+            Self::Group(fields) => fields.values().find_map(Self::get_first_leaf),
+            Self::Leaf(field) => Some(field),
+        }
+    }
+}
+
 /// Build the AcroForm's tree structure for the fields present in the document.
 /// The flat field list is converted into a tree structure by splitting the field names by the
 /// period character (`.`), as required by PDF.
 pub(crate) fn build_field_tree(gc: &mut GlobalContext) -> SourceResult<kf::FieldTree> {
-    fn insert_into_tree<'a, I>(
+    fn insert_into_tree(
         fields: &mut FieldGroup,
-        mut path: Peekable<I>,
+        path: &str,
         field: Field,
-    ) -> SourceResult<()>
-    where
-        I: Iterator<Item = &'a str>,
-    {
+    ) -> SourceResult<()> {
         let span = field.span;
-        let path_segment = path
-            .next()
-            .expect_internal("there is always one path segment when splitting")
-            .at(span)?;
-        let is_leaf = path.peek().is_none();
-
-        if is_leaf {
-            let name = field.name.clone();
-            if fields.insert(path_segment.into(), Node::Leaf(field)).is_some() {
-                bail!(
-                    span, "there are two distinct form fields named `{name}`";
-                    hint: "this can happen if you have a field named `{name}` \
-                           and another named `{name}.something-else`"
-                )
-            }
-        } else {
+        if let Some((path_segment, remainder)) = path.split_once('.') {
             let node = fields
                 .entry(path_segment.into())
                 .or_insert_with(|| Node::Group(FieldGroup::default()));
             match node {
                 Node::Group(group) => {
-                    insert_into_tree(group, path, field)?;
+                    insert_into_tree(group, remainder, field)?;
                 }
-                Node::Leaf(field) => {
-                    let name = &field.name;
+                Node::Leaf(conflicting_field) => {
+                    let conflicting_name = conflicting_field.name.repr();
                     bail!(
-                        field.span, "there are two distinct form fields named `{name}`";
-                        hint: "this can happen if you have a field named `{name}` \
-                               and another named `{name}.something-else`"
+                        conflicting_field.span,
+                        "two distinct form fields are named `{conflicting_name}`";
+                        hint: "this can happen even if one is named `{conflicting_name}` \
+                               and the other `{}`", field.name.repr();
+                        hint: "change the names so that the dot-separated segments do not overlap";
+                        hint[span]: "the other field is here";
                     )
+                }
+            }
+        } else {
+            let name = field.name.repr();
+            if let Some(conflicting_node) = fields.insert(path.into(), Node::Leaf(field))
+            {
+                match &conflicting_node {
+                    Node::Group(_) => {
+                        let conflicting_field =
+                            conflicting_node.get_first_leaf().unwrap();
+                        bail!(
+                            span, "two distinct form fields are named `{name}`";
+                            hint: "this can happen even if one is named `{name}` \
+                                   and the other `{}`", conflicting_field.name.repr();
+                            hint: "change the names so that the dot-separated segments do not overlap";
+                            hint[conflicting_field.span]: "the other field is here";
+                        )
+                    }
+                    Node::Leaf(conflicting_field) => {
+                        bail!(
+                            span, "two distinct form fields are named `{name}`";
+                            hint: "change the name of one of the fields";
+                            hint[conflicting_field.span]: "the other field is here";
+                        )
+                    }
                 }
             }
         }
@@ -737,8 +750,7 @@ pub(crate) fn build_field_tree(gc: &mut GlobalContext) -> SourceResult<kf::Field
     let mut fields = FieldGroup::default();
     for field in std::mem::take(&mut gc.acro_form.fields).into_values() {
         let name = field.name.clone();
-        let path = name.split('.').peekable();
-        insert_into_tree(&mut fields, path, field)?;
+        insert_into_tree(&mut fields, &name, field)?;
     }
 
     Ok(kf::FieldTree { fields: to_krilla_tree(fields) })
@@ -748,13 +760,13 @@ pub(crate) fn build_field_tree(gc: &mut GlobalContext) -> SourceResult<kf::Field
 pub(crate) struct AcroForm {
     /// Interactive form fields.
     fields: IndexMap<Location, Field, FxBuildHasher>,
+    /// Mapping from a form's location to the index range in the `fields` index map.
+    form_to_fields: HashMap<Location, (usize, usize)>,
 }
 
 impl AcroForm {
     pub(crate) fn collect_from_document(document: &PagedDocument) -> SourceResult<Self> {
         let introspector = document.introspector();
-        let mut seen_names = FxHashMap::default();
-
         let mut acro_form = AcroForm::default();
 
         let forms = introspector.query(&FormElem::ELEM.select());
@@ -763,29 +775,35 @@ impl AcroForm {
             let fields = introspector
                 .query(&form_fields_selector().clone().within(form_location.into()));
 
+            let index_start = acro_form.fields.len();
+
             for field in fields {
                 let id = acro_form.fields.len();
                 let location = field.location().unwrap();
                 let name_generator = || gen_field_name(id as u64 + 1);
-                let field = Field::new(document, form_location, field, name_generator)?;
-
-                let prev = seen_names.insert(field.name.clone(), location);
-                if let Some(prev_id) = prev {
-                    bail!(
-                        field.span, "two fields share the same name ({})", field.name.repr();
-                        hint: "change the name of one of the fields";
-                        hint[acro_form.fields[&prev_id].span]: "the other field is here";
-                    );
-                }
+                let field = Field::new(document, field, name_generator)?;
 
                 acro_form.fields.insert(location, field);
             }
+
+            // Store index of the first and last field (+1) to belong to this form.
+            acro_form
+                .form_to_fields
+                .insert(form_location, (index_start, acro_form.fields.len()));
         }
         Ok(acro_form)
     }
 
     pub(crate) fn get_field_mut(&mut self, location: Location) -> Option<&mut Field> {
         self.fields.get_mut(&location)
+    }
+
+    pub(crate) fn get_field_iter_of_form(
+        &self,
+        form_location: Location,
+    ) -> Option<impl Iterator<Item = &Field>> {
+        let (from, to) = *self.form_to_fields.get(&form_location)?;
+        Some(self.fields.as_slice()[from..to].values())
     }
 
     pub(crate) fn is_empty(&self) -> bool {
