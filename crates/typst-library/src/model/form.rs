@@ -928,6 +928,40 @@ pub struct FormChoice {
     pub value_indices: EcoVec<usize>,
 }
 
+impl Packed<FormChoice> {
+    fn resolve_value(&self, styles: StyleChain) -> SourceResult<EcoVec<usize>> {
+        let span = self.span();
+
+        let mut seen_options = FxHashMap::default();
+        for (i, option) in self.options.get_ref(styles).0.iter().enumerate() {
+            if let Some(prev) = seen_options.insert(option.mapping_name.as_str(), i) {
+                bail!(
+                    span, "duplicate option `{}`", option.mapping_name.repr();
+                    hint: "occurred in options at index {prev} and {i}";
+                )
+            }
+        }
+
+        let value = &self.value.get_ref(styles).0;
+
+        if !self.multiple.get(styles) && value.len() > 1 {
+            bail!(
+                span, "field cannot have more than one value when `multiple` is `false`";
+                hint: "set `multiple` to `true` or set only a single value for this field";
+            )
+        }
+        value.iter().map(|v| {
+            seen_options.get(v.as_str()).copied().ok_or_else(||{
+                eco_vec![error!(
+                    span, "unknown value `{}`", v.repr();
+                    hint: "value is not one of the options of this field";
+                    hint: "try adding it to the `options` property or setting a different value instead";
+                )]
+            })
+        }).collect_combined_result()
+    }
+}
+
 impl ShowSet for Packed<FormChoice> {
     fn show_set(&self, styles: StyleChain) -> Styles {
         let mut out = Styles::new();
@@ -962,36 +996,7 @@ impl ShowSet for Packed<FormChoice> {
 
 impl Synthesize for Packed<FormChoice> {
     fn synthesize(&mut self, _: &mut Engine, styles: StyleChain) -> SourceResult<()> {
-        let span = self.span();
-
-        let mut seen_options = FxHashMap::default();
-        for (i, option) in self.options.get_ref(styles).0.iter().enumerate() {
-            if let Some(prev) = seen_options.insert(option.mapping_name.as_str(), i) {
-                bail!(
-                    span, "duplicate option `{}`", option.mapping_name.repr();
-                    hint: "occurred in options at index {prev} and {i}";
-                )
-            }
-        }
-
-        let value = &self.value.get_ref(styles).0;
-
-        if !self.multiple.get(styles) && value.len() > 1 {
-            bail!(
-                span, "field cannot have more than one value when `multiple` is `false`";
-                hint: "set `multiple` to `true` or set only a single value for this field";
-            )
-        }
-        self.value_indices = Some(value.iter().map(|v| {
-            seen_options.get(v.as_str()).copied().ok_or_else(||{
-                eco_vec![error!(
-                    span, "unknown value `{}`", v.repr();
-                    hint: "value is not one of the options of this field";
-                    hint: "try adding it to the `options` property or setting a different value instead";
-                )]
-            })
-        }).collect_combined_result()?);
-
+        self.value_indices = Some(self.resolve_value(styles)?);
         Ok(())
     }
 }
