@@ -22,7 +22,7 @@ use typst_library::diag::{
 };
 use typst_library::foundations::{Content, IntoValue, NativeElement, Repr, StyleChain};
 use typst_library::introspection::{Introspector, Location};
-use typst_library::layout::{Abs, Frame, Sides, Size, Transform};
+use typst_library::layout::{Abs, FixedAlignment, Frame, Sides, Size, Transform};
 use typst_library::model::{
     ContentType, FieldAppearanceKind, FieldWidget, FontType, FormButton, FormCheckbox,
     FormChoice, FormElem, FormLabel, FormRadioGroup, FormSignature, FormTextbox,
@@ -283,6 +283,9 @@ impl Field {
                 if let Some(ap) = annotation.get_krilla_variable_appearance()? {
                     form_field.set_appearance(ap);
                 }
+                if let Some(alignment) = annotation.get_krilla_text_alignment() {
+                    form_field.set_text_alignment(alignment);
+                }
                 let body = annotation
                     .appearance
                     .single()
@@ -296,6 +299,9 @@ impl Field {
                 if let Some(ap) = annotation.get_krilla_variable_appearance()? {
                     form_field.set_appearance(ap);
                 }
+                if let Some(alignment) = annotation.get_krilla_text_alignment() {
+                    form_field.set_text_alignment(alignment);
+                }
                 let body = annotation
                     .appearance
                     .single()
@@ -308,6 +314,9 @@ impl Field {
             kf::FieldKind::ComboBox(form_field) => {
                 if let Some(ap) = annotation.get_krilla_variable_appearance()? {
                     form_field.set_appearance(ap);
+                }
+                if let Some(alignment) = annotation.get_krilla_text_alignment() {
+                    form_field.set_text_alignment(alignment);
                 }
                 let body = annotation
                     .appearance
@@ -467,6 +476,18 @@ impl WidgetAnnotation {
                 opacity: NormalizedF32::new(opacity as f32 / 255.0).unwrap(),
             })
         }).transpose()
+    }
+
+    /// Converts the [`typst_library::model::VariableText`] of this annotation to a krilla
+    /// [`kf::variable_text::TextAlignment`] if this annotation has variable text.
+    pub fn get_krilla_text_alignment(&self) -> Option<kf::variable_text::TextAlignment> {
+        self.appearance.variable_text().map(|variable_text| {
+            match variable_text.alignment {
+                FixedAlignment::Start => kf::variable_text::TextAlignment::Left,
+                FixedAlignment::Center => kf::variable_text::TextAlignment::Center,
+                FixedAlignment::End => kf::variable_text::TextAlignment::Right,
+            }
+        })
     }
 }
 

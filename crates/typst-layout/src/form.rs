@@ -1,19 +1,17 @@
 use std::sync::Arc;
 
 use comemo::Tracked;
+use ecow::EcoString;
 use typst_library::World;
 use typst_library::diag::{At, ExpectInternal, SourceResult, bail};
 use typst_library::engine::Engine;
-use typst_library::foundations::{NativeElement, Packed, Resolve, StyleChain};
-use typst_library::introspection::{Locator, LocatorLink};
-use typst_library::layout::{
-    Abs, Axes, Em, Frame, FrameItem, Point, Region, Sides, Size,
-};
+use typst_library::foundations::{NativeElement, Packed, StyleChain};
+use typst_library::introspection::{Location, Locator, LocatorLink};
+use typst_library::layout::{AlignElem, Em, Frame, FrameItem, Point, Region, Size};
 use typst_library::model::{
     ButtonAction, FieldAppearanceBody, FieldAppearanceKind, FieldWidget, FontType,
-    FormButton, FormCheckbox, FormChoice, FormCursor, FormElem, FormRadioButton,
-    FormRadioGroup, FormSignature, FormTextbox, FormWidget, VariableText, WidgetAction,
-    WidgetState,
+    FormButton, FormCheckbox, FormChoice, FormElem, FormRadioButton, FormRadioGroup,
+    FormSignature, FormTextbox, FormWidget, VariableText, WidgetAction, WidgetState,
 };
 use typst_library::text::{
     FontFlags, FontStyle, FontWeight, TextElem, families, variant,
@@ -77,38 +75,18 @@ pub fn layout_checkbox(
     styles: StyleChain,
     region: Region,
 ) -> SourceResult<Frame> {
-    let span = elem.span();
-    let link = LocatorLink::measure(elem.location().unwrap(), span);
-    let body_off = layout_appearance_body(
+    let location = elem.location().unwrap();
+    layout_dual_appearance(
         engine,
-        span,
-        Some(false),
-        Some(locator),
-        &link,
+        locator,
         styles,
         region,
-    )?;
-    let body_on =
-        layout_appearance_body(engine, span, Some(true), None, &link, styles, region)?;
-
-    // Checkbox's size is dictated by the contents of the unchecked normal state.
-    let size = region.expand.select(region.size, body_off.normal.size());
-
-    let checked = elem.checked.get(styles);
-    let widget = FieldWidget {
-        span: elem.span(),
-        field_location: elem.location().unwrap(),
-        size,
-        action: None,
-        value: None,
-        appearance: Arc::new(FieldAppearanceKind::Dual {
-            active: checked,
-            body_off,
-            body_on,
-        }),
-    };
-
-    Ok(create_widget_frame(size, widget))
+        None,
+        elem.checked.get(styles),
+        location,
+        location,
+        elem.span(),
+    )
 }
 
 /// Layout the radio button.
@@ -123,7 +101,136 @@ pub fn layout_radio_button(
     let span = elem.span();
     let group = FormRadioGroup::try_from_styles(elem, &styles)?;
 
-    let link = LocatorLink::measure(elem.location().unwrap(), span);
+    let value = elem
+        .resolved_value
+        .clone()
+        .expect_internal("radio button's resolved value is unset")
+        .at(span)?;
+    let selected_label = group.selected.get_ref(styles);
+    let selected = selected_label.is_some() && selected_label == &elem.label();
+
+    layout_dual_appearance(
+        engine,
+        locator,
+        styles,
+        region,
+        Some(value),
+        selected,
+        elem.location().unwrap(),
+        group.location().unwrap(),
+        span,
+    )
+}
+
+/// Layout the textbox.
+#[typst_macros::time(span = elem.span())]
+pub fn layout_textbox(
+    elem: &Packed<FormTextbox>,
+    engine: &mut Engine,
+    locator: Locator,
+    styles: StyleChain,
+    region: Region,
+) -> SourceResult<Frame> {
+    layout_single_appearance(
+        engine,
+        locator,
+        styles,
+        region,
+        true,
+        elem.location().unwrap(),
+        elem.span(),
+    )
+}
+
+/// Layout the choice field.
+#[typst_macros::time(span = elem.span())]
+pub fn layout_choice(
+    elem: &Packed<FormChoice>,
+    engine: &mut Engine,
+    locator: Locator,
+    styles: StyleChain,
+    region: Region,
+) -> SourceResult<Frame> {
+    layout_single_appearance(
+        engine,
+        locator,
+        styles,
+        region,
+        true,
+        elem.location().unwrap(),
+        elem.span(),
+    )
+}
+
+/// Layout the signature field.
+#[typst_macros::time(span = elem.span())]
+pub fn layout_signature(
+    elem: &Packed<FormSignature>,
+    engine: &mut Engine,
+    locator: Locator,
+    styles: StyleChain,
+    region: Region,
+) -> SourceResult<Frame> {
+    layout_single_appearance(
+        engine,
+        locator,
+        styles,
+        region,
+        false,
+        elem.location().unwrap(),
+        elem.span(),
+    )
+}
+
+// Layout a single field appearance, without any hover or down states.
+fn layout_single_appearance(
+    engine: &mut Engine,
+    locator: Locator,
+    styles: StyleChain,
+    region: Region,
+    has_variable_text: bool,
+    location: Location,
+    span: Span,
+) -> SourceResult<Frame> {
+    let variable_text =
+        has_variable_text.then(|| get_variable_text(&engine.world, styles));
+    let cap_height = variable_text
+        .as_ref()
+        .map(|vt| get_cap_height(vt.font_type, vt.font_bold, vt.font_italic));
+
+    let inner_frame =
+        layout_widget(engine, span, None, None, locator, styles, region, cap_height)?;
+    let size = region.expand.select(region.size, inner_frame.size());
+
+    let widget = FieldWidget {
+        span,
+        field_location: location,
+        size,
+        action: None,
+        value: None,
+        appearance: Arc::new(FieldAppearanceKind::Single {
+            variable_text,
+            body: FieldAppearanceBody::new(inner_frame),
+        }),
+    };
+
+    Ok(create_widget_frame(size, widget))
+}
+
+// Layout a dual field appearance, with hover and down states.
+#[allow(clippy::too_many_arguments)]
+fn layout_dual_appearance(
+    engine: &mut Engine,
+    locator: Locator,
+    styles: StyleChain,
+    region: Region,
+    value: Option<EcoString>,
+    active: bool,
+    widget_location: Location,
+    field_location: Location,
+    span: Span,
+) -> SourceResult<Frame> {
+    let link = LocatorLink::measure(widget_location, span);
     let body_off = layout_appearance_body(
         engine,
         span,
@@ -136,163 +243,16 @@ pub fn layout_radio_button(
     let body_on =
         layout_appearance_body(engine, span, Some(true), None, &link, styles, region)?;
 
-    // Radio's size is dictated by the contents of the unchecked normal state.
+    // Frame size is dictated by the contents of the off normal state.
     let size = region.expand.select(region.size, body_off.normal.size());
 
-    let value = elem
-        .resolved_value
-        .clone()
-        .expect_internal("radio button's resolved value is unset")
-        .at(span)?;
-    let selected_label = group.selected.get_ref(styles);
-    let selected = selected_label.is_some() && selected_label == &elem.label();
     let widget = FieldWidget {
         span,
-        field_location: group.location().unwrap(),
+        field_location,
         size,
         action: None,
-        value: Some(value),
-        appearance: Arc::new(FieldAppearanceKind::Dual {
-            active: selected,
-            body_off,
-            body_on,
-        }),
-    };
-
-    Ok(create_widget_frame(size, widget))
-}
-
-/// Layout the textbox.
-#[typst_macros::time(span = elem.span())]
-pub fn layout_textbox(
-    elem: &Packed<FormTextbox>,
-    engine: &mut Engine,
-    locator: Locator,
-    styles: StyleChain,
-    region: Region,
-) -> SourceResult<Frame> {
-    layout_widget(engine, elem.span(), None, None, locator, styles, region)
-}
-
-/// Layout the choice field.
-#[typst_macros::time(span = elem.span())]
-pub fn layout_choice(
-    elem: &Packed<FormChoice>,
-    engine: &mut Engine,
-    locator: Locator,
-    styles: StyleChain,
-    region: Region,
-) -> SourceResult<Frame> {
-    let span = elem.span();
-
-    let inner_frame = layout_widget(engine, span, None, None, locator, styles, region)?;
-    let size = region.expand.select(region.size, inner_frame.size());
-
-    let widget = FieldWidget {
-        span,
-        field_location: elem.location().unwrap(),
-        size,
-        action: None,
-        value: None,
-        appearance: Arc::new(FieldAppearanceKind::Single {
-            variable_text: Some(get_variable_text(&engine.world, styles)),
-            body: FieldAppearanceBody::new(inner_frame),
-        }),
-    };
-
-    Ok(create_widget_frame(size, widget))
-}
-
-/// Layout the signature field.
-#[typst_macros::time(span = elem.span())]
-pub fn layout_signature(
-    elem: &Packed<FormSignature>,
-    engine: &mut Engine,
-    locator: Locator,
-    styles: StyleChain,
-    region: Region,
-) -> SourceResult<Frame> {
-    let span = elem.span();
-
-    let inner_frame = layout_widget(engine, span, None, None, locator, styles, region)?;
-    let size = region.expand.select(region.size, inner_frame.size());
-
-    let widget = FieldWidget {
-        span,
-        field_location: elem.location().unwrap(),
-        size,
-        action: None,
-        value: None,
-        appearance: Arc::new(FieldAppearanceKind::Single {
-            variable_text: None,
-            body: FieldAppearanceBody::new(inner_frame),
-        }),
-    };
-
-    Ok(create_widget_frame(size, widget))
-}
-
-/// Layout a form cursor (i.e., the variable text).
-#[typst_macros::time(span = elem.span())]
-pub fn layout_cursor(
-    elem: &Packed<FormCursor>,
-    engine: &mut Engine,
-    locator: Locator,
-    styles: StyleChain,
-    region: Region,
-) -> SourceResult<Frame> {
-    let span = elem.span();
-    let Some(textbox) = styles
-        .get_ref(FormWidget::parent)
-        .as_ref()
-        .and_then(|elem| elem.to_packed::<FormTextbox>())
-    else {
-        bail!(
-            span, "this cursor element must be inside a textbox element";
-            hint: "you can use it in a show rule on `form.widget` within a textbox";
-        )
-    };
-    let multiline = textbox.multiline.get(styles);
-    let variable_text = get_variable_text(&engine.world, styles);
-
-    let body = TextElem::new(textbox.value.get_cloned(styles).unwrap_or_default())
-        .pack()
-        .spanned(span);
-    let mut frame = crate::layout_frame(engine, &body, locator, styles, region)?;
-
-    // Since this field might be filled out with one of the 14 standard PDF fonts,
-    // calculate that font's height and ensure the frame is large enough for it too.
-    // If not, add the relevant padding so that the text stays vertically centered.
-    let extra_padding_y = if !multiline {
-        let standard_font_height = get_cap_height(
-            variable_text.font_type,
-            variable_text.font_bold,
-            variable_text.font_italic,
-        )
-        .resolve(styles);
-
-        Abs::zero().max((standard_font_height - frame.height()) / 2.0)
-    } else {
-        Abs::zero()
-    };
-
-    let padding_x = Em::new(0.35).resolve(styles).into();
-    let padding_y = (Em::new(0.5).resolve(styles) + extra_padding_y).into();
-    crate::pad::grow(&mut frame, &Sides::new(padding_x, padding_y, padding_x, padding_y));
-
-    let expand = Axes::new(true, multiline);
-    let size = expand.select(region.size, frame.size());
-
-    let widget = FieldWidget {
-        span: textbox.span(),
-        field_location: textbox.location().unwrap(),
-        size,
-        action: None,
-        value: None,
-        appearance: Arc::new(FieldAppearanceKind::Single {
-            variable_text: Some(variable_text),
-            body: FieldAppearanceBody::new(frame),
-        }),
+        value,
+        appearance: Arc::new(FieldAppearanceKind::Dual { active, body_off, body_on }),
     };
 
     Ok(create_widget_frame(size, widget))
@@ -300,6 +260,7 @@ pub fn layout_cursor(
 
 /// Layout a form field as a [`FormWidget`] with the given interactive state (i.e.,
 /// checked/hovered).
+#[allow(clippy::too_many_arguments)]
 fn layout_widget(
     engine: &mut Engine,
     span: Span,
@@ -308,12 +269,14 @@ fn layout_widget(
     locator: Locator,
     styles: StyleChain,
     region: Region,
+    font_cap_height: Option<Em>,
 ) -> SourceResult<Frame> {
     let content = FormWidget::new()
         .with_checked(checked)
         .with_state(state)
         .pack()
-        .spanned(span);
+        .spanned(span)
+        .set(FormWidget::font_cap_height, font_cap_height);
     crate::layout_frame(engine, &content, locator, styles, region)
 }
 
@@ -338,6 +301,7 @@ fn layout_appearance_body(
         locator.unwrap_or_else(|| Locator::link(link)),
         styles,
         region,
+        None,
     )?;
     let hover = layout_widget(
         engine,
@@ -347,6 +311,7 @@ fn layout_appearance_body(
         Locator::link(link),
         styles,
         region,
+        None,
     )?;
     let down = layout_widget(
         engine,
@@ -356,6 +321,7 @@ fn layout_appearance_body(
         Locator::link(link),
         styles,
         region,
+        None,
     )?;
 
     // In Pdfium, we must either have only normal, or all three.
@@ -381,6 +347,11 @@ fn get_variable_text<'a>(
     world: &Tracked<'a, dyn World + 'a>,
     styles: StyleChain,
 ) -> VariableText {
+    // FIXME: we might want to look through recipes for FormWidget in the
+    // StyleChain so that `#show form.widget: set align(center)` also works.
+    // Currently we have to do `#show form.textbox: set align(center)` which
+    // aligns the whole textbox and not just the text.
+
     // Detect whether the current font is sans-serif, serif, or monospace,
     // along with whether bold and/or italic is set.
     let variant = variant(styles);
@@ -403,6 +374,7 @@ fn get_variable_text<'a>(
         });
     let fill_paint = styles.get_cloned(TextElem::fill);
     let font_size = styles.resolve(TextElem::size);
+    let alignment = styles.resolve(AlignElem::alignment).x;
 
     VariableText {
         font_type,
@@ -410,6 +382,7 @@ fn get_variable_text<'a>(
         font_italic: matches!(variant.style, FontStyle::Italic | FontStyle::Oblique),
         font_size,
         fill_color: fill_paint,
+        alignment,
     }
 }
 

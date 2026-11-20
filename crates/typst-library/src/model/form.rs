@@ -21,7 +21,7 @@ use crate::introspection::{
     Counter, CounterKey, Introspector, Location, QueryIntrospection,
     QueryLabelIntrospection,
 };
-use crate::layout::{Abs, Em, Frame, Length, Rel, Sides, Size, Sizing};
+use crate::layout::{Abs, Em, FixedAlignment, Frame, Length, Rel, Sides, Size, Sizing};
 use crate::visualize::{CircleElem, Paint, RectElem};
 
 /// A form with interactive and fillable fields.
@@ -213,8 +213,6 @@ impl FormElem {
     type FormLabel;
     #[elem]
     type FormWidget;
-    #[elem]
-    type FormCursor;
 }
 
 impl FormElem {
@@ -794,19 +792,22 @@ impl ShowSet for Packed<FormTextbox> {
         elem.materialize(styles);
         out.set(FormWidget::parent, Some(elem));
 
+        let multiline = self.multiline.get(styles);
         let disabled = self.disabled.get(styles);
-        let stroke = styles::field_stroke(disabled);
-        let stroke = if self.multiline.get(styles) {
-            Sides::splat(Some(Some(stroke)))
-        } else {
-            Sides::new(None, None, None, Some(Some(stroke)))
-        };
 
-        out.set(
-            RectElem::outset,
-            Sides::splat(Some(Abs::pt(-styles::STROKE_THICKNESS_PT / 2.0).into())),
+        let stroke = styles::sides_all_or_bottom(
+            multiline,
+            Some(Some(styles::field_stroke(disabled))),
+            None,
+        );
+        let inset = styles::sides_all_or_bottom(
+            multiline,
+            Some(Abs::pt(styles::STROKE_THICKNESS_PT / 2.0).into()),
+            Some(Abs::zero().into()),
         );
         out.set(RectElem::stroke, Smart::Custom(stroke));
+        out.set(RectElem::inset, inset);
+
         if disabled {
             styles::set_disabled_styles(&mut out);
         }
@@ -936,8 +937,22 @@ impl ShowSet for Packed<FormChoice> {
         elem.materialize(styles);
         out.set(FormWidget::parent, Some(elem));
 
+        let multiple = self.multiple.get(styles);
         let disabled = self.disabled.get(styles);
-        styles::set_inner_stroke(&mut out, disabled);
+
+        let stroke = styles::sides_all_or_bottom(
+            multiple,
+            Some(Some(styles::field_stroke(disabled))),
+            None,
+        );
+        let inset = styles::sides_all_or_bottom(
+            multiple,
+            Some(Abs::pt(styles::STROKE_THICKNESS_PT / 2.0).into()),
+            Some(Abs::zero().into()),
+        );
+        out.set(RectElem::stroke, Smart::Custom(stroke));
+        out.set(RectElem::inset, inset);
+
         if disabled {
             styles::set_disabled_styles(&mut out);
         }
@@ -1064,7 +1079,12 @@ impl ShowSet for Packed<FormSignature> {
         elem.materialize(styles);
         out.set(FormWidget::parent, Some(elem));
 
-        styles::set_inner_stroke(&mut out, false);
+        let stroke = styles::field_stroke(false);
+        out.set(RectElem::stroke, Smart::Custom(Sides::splat(Some(Some(stroke)))));
+        out.set(
+            RectElem::inset,
+            Sides::splat(Some(Abs::pt(styles::STROKE_THICKNESS_PT / 2.0).into())),
+        );
         out
     }
 }
@@ -1319,6 +1339,8 @@ pub struct VariableText {
     pub font_size: Abs,
     /// Text color. Only solid colors are supported.
     pub fill_color: Paint,
+    /// Horizontal alignment.
+    pub alignment: FixedAlignment,
 }
 
 /// The type of the font.
@@ -1427,6 +1449,13 @@ pub struct FormWidget {
     #[ghost]
     #[internal]
     pub parent: Option<Content>,
+
+    /// The cap height of the font used for variable text.
+    /// No text is drawn by Typst with this font, but PDF readers will use it,
+    /// so Typst needs to be aware of its height to size elements accordingly.
+    #[ghost]
+    #[internal]
+    pub font_cap_height: Option<Em>,
 }
 
 impl Construct for FormWidget {
@@ -1446,16 +1475,6 @@ pub enum WidgetState {
     Down,
 }
 
-/// The writing area of a @form.textbox[textbox].
-///
-/// A cursor element can only be used inside the show rule of
-/// a textbox.
-///
-/// Further information can be found in the
-/// @guides:forms:textbox[Styling Textboxes section of the Forms Guide].
-#[elem(name = "cursor", since = "unreleased", Locatable)]
-pub struct FormCursor {}
-
 /// Constants and helper functions to style form fields.
 pub mod styles {
     use crate::foundations::{Smart, Styles};
@@ -1467,10 +1486,10 @@ pub mod styles {
     pub const STROKE_THICKNESS_PT: f64 = 0.5;
 
     /// Background color of disabled field.
-    pub(super) const DISABLED_FILL: Color =
+    pub const DISABLED_FILL: Color =
         Color::Process(ProcessColor::Luma(Luma::new(0.95, 0.7)));
     /// Stroke color of disabled field.
-    const DISABLED_STROKE_COLOR: Color =
+    pub const DISABLED_STROKE_COLOR: Color =
         Color::Process(ProcessColor::Luma(Luma::new(0.0, 0.5)));
     /// Text color of disabled field.
     pub const DISABLED_TEXT_FILL: Color =
@@ -1484,7 +1503,7 @@ pub mod styles {
         Color::Process(ProcessColor::Luma(Luma::new(0.15, 0.21)));
 
     /// Get the stroke for a field, depending whether it is disabled.
-    pub(super) fn field_stroke(disabled: bool) -> Stroke {
+    pub fn field_stroke(disabled: bool) -> Stroke {
         if disabled {
             Stroke::from_pair(DISABLED_STROKE_COLOR, Abs::pt(STROKE_THICKNESS_PT).into())
         } else {
@@ -1503,14 +1522,14 @@ pub mod styles {
     }
 
     /// Set the background and text color for a disabled field.
-    pub(super) fn set_disabled_styles(styles: &mut Styles) {
+    pub fn set_disabled_styles(styles: &mut Styles) {
         styles.set(RectElem::fill, Some(DISABLED_FILL.into()));
         styles.set(TextElem::fill, DISABLED_TEXT_FILL.into());
     }
 
-    /// Set the stroke and accompanying outset/inset for a form field
-    /// that is surrounded by a [`RectElem`].
-    pub(super) fn set_inner_stroke(styles: &mut Styles, disabled: bool) {
+    /// Set the stroke and accompanying outset/inset for an inner stroke on a
+    /// [`RectElem`].
+    pub fn set_inner_stroke(styles: &mut Styles, disabled: bool) {
         styles.set(
             RectElem::outset,
             Sides::splat(Some(Abs::pt(-STROKE_THICKNESS_PT / 2.0).into())),
@@ -1523,5 +1542,16 @@ pub mod styles {
             RectElem::inset,
             Sides::splat(Some(Abs::pt(STROKE_THICKNESS_PT).into())),
         );
+    }
+
+    /// Get a [`Sides`] with the same value on all sides if `all` is true,
+    /// or only on the bottom otherwise.
+    /// If `all` is false, all sides expect bottom are set to `value_rest`.
+    pub fn sides_all_or_bottom<T: Clone>(all: bool, value: T, value_rest: T) -> Sides<T> {
+        if all {
+            Sides::splat(value)
+        } else {
+            Sides::new(value_rest.clone(), value_rest.clone(), value_rest, value)
+        }
     }
 }
