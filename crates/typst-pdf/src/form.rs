@@ -56,20 +56,17 @@ impl Field {
         let span = field.span();
 
         let get_alt_name = || {
-            field
-                .label()
-                .map(|label| {
-                    let all_labels =
-                        document.introspector().query(&FormLabel::ELEM.where_(
-                            [(FormLabel::target.index(), label.into_value())].into(),
-                        ));
-                    // TODO: should we only allow one label?
+            field.label().map(|label| {
+                let all_labels =
+                    document.introspector().query(&FormLabel::ELEM.where_(
+                        [(FormLabel::target.index(), label.into_value())].into(),
+                    ));
+                // TODO: should we only allow one label?
 
-                    let text: Vec<_> =
-                        all_labels.iter().map(|content| content.plain_text()).collect();
-                    text.join("\n")
-                })
-                .unwrap_or_default()
+                let text: Vec<_> =
+                    all_labels.iter().map(|content| content.plain_text()).collect();
+                text.join("\n")
+            })
         };
 
         let (name, krilla_field) = if let Some(button) = field.to_packed::<FormButton>() {
@@ -80,7 +77,7 @@ impl Field {
 
             let krilla_field = kf::FormField::push_button(partial_name)
                 .with_location(Some(span.into_raw()))
-                .with_alt_name(button.body.plain_text().to_string())
+                .with_alt_name(Some(button.body.plain_text().to_string()))
                 .with_read_only(disabled);
 
             (name, krilla_field.into())
@@ -95,7 +92,7 @@ impl Field {
             let krilla_field = kf::FormField::checkbox(partial_name, checked)
                 .with_location(Some(span.into_raw()))
                 .with_alt_name(get_alt_name())
-                .with_default_checked(checked)
+                .with_default_checked(Some(checked))
                 .with_required(required)
                 .with_read_only(read_only);
 
@@ -125,8 +122,7 @@ impl Field {
                         .title
                         .get_ref(styles)
                         .as_ref()
-                        .map(|elem| elem.plain_text().to_string())
-                        .unwrap_or_default(),
+                        .map(|elem| elem.plain_text().to_string()),
                 )
                 .with_default_value(selected)
                 .with_required(required)
@@ -137,6 +133,7 @@ impl Field {
             let name = textbox.name.get_cloned(styles).unwrap_or_else(name_generator);
             let partial_name = name.rsplit('.').next().unwrap().to_string();
 
+            let value = textbox.value.get_ref(styles).as_ref().map(Into::into);
             let multiline = textbox.multiline.get(styles);
             let required = textbox.required.get(styles);
             let read_only = textbox.disabled.get(styles);
@@ -144,22 +141,18 @@ impl Field {
                 textbox.max_length.get(styles).map(|i| i.saturating_as::<i32>());
             let fixed_width = textbox.fixed_width.get(styles);
             let spellcheck = textbox.spellcheck.get(styles).unwrap_or(true);
-            let value = textbox.value.get_ref(styles);
 
-            let mut krilla_field = kf::FormField::text(partial_name)
+            let krilla_field = kf::FormField::text(partial_name)
                 .with_location(Some(span.into_raw()))
                 .with_alt_name(get_alt_name())
+                .with_value(value.clone())
+                .with_default_value(value)
                 .with_mutliline(multiline)
                 .with_required(required)
                 .with_read_only(read_only)
                 .with_max_length(max_length)
                 .with_comb(fixed_width)
                 .with_spellcheck(spellcheck);
-
-            if let Some(value) = value {
-                krilla_field.set_value(value.to_string());
-                krilla_field.set_default_value(value.to_string());
-            }
 
             (name, krilla_field.into())
         } else if let Some(choice_field) = field.to_packed::<FormChoice>() {
@@ -200,16 +193,15 @@ impl Field {
                     .with_read_only(read_only)
                     .into()
             } else {
-                let mut krilla_field = kf::FormField::combobox(partial_name)
+                let value = value.first().copied();
+                let krilla_field = kf::FormField::combobox(partial_name)
                     .with_location(Some(span.into_raw()))
                     .with_alt_name(get_alt_name())
+                    .with_value(value)
+                    .with_default_value(value)
                     .with_options(options)
                     .with_required(required)
                     .with_read_only(read_only);
-                if let Some(&value) = value.first() {
-                    krilla_field.set_value(value);
-                    krilla_field.set_default_value(value);
-                }
                 krilla_field.into()
             };
 
@@ -245,13 +237,10 @@ impl Field {
                     .single()
                     .expect_internal("push button does not have single appearance")
                     .at(span)?;
-                let mut widget = form_field.new_widget(annotation.bbox, body.normal);
-                if let Some(rollover) = body.hover {
-                    widget.set_rollover_appearance(rollover);
-                }
-                if let Some(down) = body.down {
-                    widget.set_down_appearance(down);
-                }
+                let widget = form_field
+                    .new_widget(annotation.bbox, body.normal)
+                    .with_rollover_appearance(body.hover)
+                    .with_down_appearance(body.down);
 
                 insert_annotation(span, page, form_field, widget, action)?
             }
@@ -261,23 +250,12 @@ impl Field {
                     .dual()
                     .expect_internal("checkbox does not have dual appearance")
                     .at(span)?;
-                let mut widget = form_field.new_widget(
-                    annotation.bbox,
-                    body_off.normal,
-                    body_on.normal,
-                );
-                if let Some(rollover) = body_off.hover {
-                    widget.set_off_rollover_appearance(rollover);
-                }
-                if let Some(down) = body_off.down {
-                    widget.set_off_down_appearance(down);
-                }
-                if let Some(rollover) = body_on.hover {
-                    widget.set_on_rollover_appearance(rollover);
-                }
-                if let Some(down) = body_on.down {
-                    widget.set_on_down_appearance(down);
-                }
+                let widget = form_field
+                    .new_widget(annotation.bbox, body_off.normal, body_on.normal)
+                    .with_off_rollover_appearance(body_off.hover)
+                    .with_off_down_appearance(body_off.down)
+                    .with_on_rollover_appearance(body_on.hover)
+                    .with_on_down_appearance(body_on.down);
 
                 insert_annotation(span, page, form_field, widget, action)?
             }
@@ -292,24 +270,12 @@ impl Field {
                     .dual()
                     .expect_internal("radio button does not have dual appearance")
                     .at(span)?;
-                let mut widget = form_field.new_widget(
-                    annotation.bbox,
-                    value,
-                    body_off.normal,
-                    body_on.normal,
-                );
-                if let Some(rollover) = body_off.hover {
-                    widget.set_off_rollover_appearance(rollover);
-                }
-                if let Some(down) = body_off.down {
-                    widget.set_off_down_appearance(down);
-                }
-                if let Some(rollover) = body_on.hover {
-                    widget.set_on_rollover_appearance(rollover);
-                }
-                if let Some(down) = body_on.down {
-                    widget.set_on_down_appearance(down);
-                }
+                let widget = form_field
+                    .new_widget(annotation.bbox, value, body_off.normal, body_on.normal)
+                    .with_off_rollover_appearance(body_off.hover)
+                    .with_off_down_appearance(body_off.down)
+                    .with_on_rollover_appearance(body_on.hover)
+                    .with_on_down_appearance(body_on.down);
 
                 insert_annotation(span, page, form_field, widget, action)?
             }
@@ -378,9 +344,7 @@ fn insert_annotation<FT, A>(
 where
     ka::WidgetAnnotation<A>: Into<ka::WidgetAnnotationKind>,
 {
-    if let Some(action) = action {
-        widget.set_action_mouse_press(action);
-    }
+    widget.set_action_mouse_press(action);
 
     let annotation = ka::Annotation::from(widget).with_location(Some(span.into_raw()));
     Ok(page.add_widget_annotation(form_field, annotation))
