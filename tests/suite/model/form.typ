@@ -148,38 +148,6 @@
   #form.button(action: "submit")[Submit]
 ]
 
---- form-cursor-outside-textbox paged ---
-// Error: 2-15 this cursor element must be inside a textbox element
-// Hint: 2-15 you can use it in a show rule on `form.widget` within a textbox
-#form.cursor()
-
---- form-textbox-no-cursor paged ---
-#form[
-  #show form.textbox: it => {
-    show form.widget: []
-    it
-  }
-  // Error: 4-18 textbox needs to have a `#form.cursor()` element in its show rule
-  // Hint: 4-18 add `#form.cursor()` to the `form.widget` show rule within a textbox
-  #form.textbox()
-]
-
---- form-textbox-multiple-cursors paged ---
-#form[
-  #show form.textbox: it => {
-    show form.widget: [
-      // Hint: 8-21 one of the cursors is here
-      #form.cursor()
-      // Hint: 8-21 another cursor is here
-      #form.cursor()
-    ]
-    it
-  }
-  // Error: 4-18 textbox has more than one `#form.cursor()` element in its show rule
-  // Hint: 4-18 remove all but one of the cursors
-  #form.textbox()
-]
-
 --- form-radio-group-selected-not-button pdf html ---
 #form[
   == Heading <heading>
@@ -263,19 +231,12 @@
 #let color = gradient.linear(red, green)
 
 #form[
-  #show form.textbox: it => {
-    show form.cursor: set text(fill: color)
-    it
-  }
+  #show form.textbox: set text(fill: color)
   // Error: 4-18 text of a form field can only be filled with a solid color
   // Hint: 4-18 remove the gradient or pattern
   #form.textbox()
 
-  #show form.choice: it => {
-    set text(fill: color)
-    it
-  }
-
+  #show form.choice: set text(fill: color)
   // Error: 4-17 text of a form field can only be filled with a solid color
   // Hint: 4-17 remove the gradient or pattern
   #form.choice()
@@ -524,12 +485,9 @@
   #show form.textbox: it => {
     // Change text color (readers should then use it when editing the field too)
     set text(fill: blue)
+    set rect(stroke: 1pt + gradient.linear(red, green), outset: -1pt)
+    set align(right)
     show form.widget: it => {
-      set rect(stroke: 1pt + gradient.linear(red, green), outset: -1pt)
-      // TODO: align doesn't work
-      align(right, it)
-    }
-    show form.cursor: it => {
       // It is possible to change the text here in a way that does not match the value.
       // Readers might then wrongly assume this is the actual value, however.
       show "foobar": [barfoo #emoji.face]
@@ -546,7 +504,8 @@
     // Replace the arrow on the right side with an emoji
     show sym.triangle.filled.small.b: emoji.arrow.b.filled
 
-    rect(stroke: (bottom: 0.5pt, rest: none), inset: 0pt, it)
+    set rect(stroke: 0.5pt)
+    it
   }
 
   #form.choice(options: options, value: "foo")
