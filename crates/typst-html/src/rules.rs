@@ -706,7 +706,8 @@ const FORM_RULE: ShowFn<FormElem> = |elem, _, styles| {
         attributes.push(attr::action, target.v.url.clone());
 
         if let Smart::Custom(content_type) = target.v.content_type {
-            if target.v.method == HttpMethod::Get && content_type != ContentType::UrlEncoded
+            if target.v.method == HttpMethod::Get
+                && content_type != ContentType::UrlEncoded
             {
                 bail!(
                     target.span,
