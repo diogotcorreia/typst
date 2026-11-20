@@ -8,9 +8,7 @@ use typst_library::foundations::{
     Content, Context, NativeElement, NativeRuleMap, Packed, Resolve, ShowFn, Smart,
     StyleChain, SymbolElem, Synthesize, Target, Value, dict,
 };
-use typst_library::introspection::{
-    Counter, Locator, LocatorLink, QueryUniqueIntrospection,
-};
+use typst_library::introspection::{Counter, Locator, LocatorLink};
 use typst_library::layout::{
     Abs, AlignElem, Alignment, Axes, BlockBody, BlockElem, BoxElem, ColumnsElem, Em,
     FixedAlignment, Fr, GridCell, GridChild, GridElem, GridItem, HAlignment, HElem,
@@ -720,7 +718,7 @@ const FORM_LABEL_RULE: ShowFn<FormLabel> = |elem, engine, _| {
     Ok(elem.body.clone())
 };
 
-const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, engine, styles| {
+const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, _, styles| {
     let span = elem.span();
     let field = styles
         .get_ref(FormWidget::parent)
@@ -751,27 +749,7 @@ const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, engine, styles| {
         )
     } else if let Some(choice_field) = field.to_packed::<FormChoice>() {
         let options = choice_field.options.get_ref(styles);
-        let value = {
-            // FIXME: Because there is no ancestry selector, we are using a ShowSet rule to set the
-            // parent. However, that runs before Synthesize, so this field needs to be accessed
-            // through the introspector where the element has been synthesized.
-            let content = engine
-                .introspect(QueryUniqueIntrospection(
-                    choice_field.location().unwrap().into(),
-                    span,
-                ))
-                .at(span)?;
-            let choice_field = content
-                .to_packed::<FormChoice>()
-                .expect_internal("form choice field is not FormChoice")
-                .at(span)?;
-            choice_field
-                .value_indices
-                .as_ref()
-                .expect_internal("synthesized `value_indices` not set")
-                .at(span)?
-                .clone()
-        };
+        let value = choice_field.value_indices.clone().unwrap_or_default();
         let multiple = choice_field.multiple.get(styles);
         if multiple {
             listbox_widget_rule(value, options, choice_field.disabled.get(styles), span)

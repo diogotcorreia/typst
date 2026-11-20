@@ -967,7 +967,9 @@ impl ShowSet for Packed<FormChoice> {
         let mut out = Styles::new();
         // Makes the field itself available to the `FieldWidget`. Should be
         // superseded by a proper ancestry mechanism in the future.
-        let mut elem = self.clone().pack();
+        let mut elem = self.clone();
+        elem.value_indices = self.resolve_value(styles).ok();
+        let mut elem = elem.pack();
         elem.materialize(styles);
         out.set(FormWidget::parent, Some(elem));
 
