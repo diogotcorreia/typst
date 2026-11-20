@@ -290,12 +290,12 @@ a81b957f0011be890b17f98173831859 footnote-ref-in-footnote
 0c1d0ea8569b0ad86b0437ed02689c88 footnote-space-collapsing
 6d65ff73042df0b525cf13a51a48b9a5 footnote-styling
 e1dd84a3bbe74f2867d4568997582423 for-loop-basic
-69bfd0418df5bc9830947e58e14218b0 form-basic-pdf-a-3a
-7cc99d6dfe8021cb469e74224addf44e form-basic-pdf-ua-1
+fd5cab2c68ef6ebfc504cb9001e96c4f form-basic-pdf-a-3a
+0573072dd259404278d4a87dd83c0b39 form-basic-pdf-ua-1
 3cb12dd70841c304c87984d0262a6888 form-button
 2868d8fc2fdc2164fd063c8284704726 form-checkbox
-2fa94b5d408cf0203549772628a9a961 form-choice
-11630fbb37452b972c772fb93a91537a form-choice-non-latin-options
+d97b6df44b7a1d271ae94a31b17ccbb5 form-choice
+3b623c6d8b69658d40ecfc87a8521aed form-choice-non-latin-options
 122acadf3d5d0ac8fbe5c3713cd76965 form-counter
 ec8291cde46eef4ec215ec205a055d42 form-multiple
 6208d75a9950c8e30e8a4dd248a4b55a form-place-circle-on-textbox
@@ -309,7 +309,7 @@ f3e4f70e221380373ea36ff2e909fdaf form-radio-group-non-latin-values
 5c4ecf071ce770ccccd753ced5dd4f23 form-textbox-placeholder-paged
 1978a3d03ffae194eaeadcf6eafd151d form-transformations
 4bc3850dc96706741b7cfcb4c9c457b8 form-widget-emit-down-when-hovered-is-different
-4643d0330a36598b31ce6066499175c7 form-widget-show-rule
+7da64aba4d7e8f90732e193f03006cf2 form-widget-show-rule
 c1e5314f6ce95e23788bdeeda5895aa4 gradient-angle-rotation-aspect
 ece421a0356d9ef433bbda84c5da0021 gradient-conic
 783249d0fa64384b3780ded998cb32f0 gradient-conic-angled
