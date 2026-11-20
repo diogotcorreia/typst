@@ -38,8 +38,8 @@ d30d960cd017a77c60260a7386df8266 figure-tags-with-alt-flatten-content-basic
 391168aecaeb8a71614762b111a4a4ae footnote-tags-basic
 42e50074b03bacfff6b4b3fc33f95c56 footnote-tags-different-lang
 ddedb364445863b5ea2190f440daeab7 footnote-tags-ref-to-other-footnote
-b8cd2b8976f0b26c52db7100f80c85fe form-basic-pdf-a-3a
-7ee142212bcc62340dd26a2bd098cd12 form-basic-pdf-ua-1
+871e7f7e342562eeed520efb1f3117bd form-basic-pdf-a-3a
+b20b03db8457275908034289eab7934b form-basic-pdf-ua-1
 aedfe180f59a9463e715ae5587a5ef34 grid-headers
 1c7e8427b21e7871f73a528eef89bc49 grid-tags-cell-breaking
 a2c6af5f2ff65534067dc2e2e2f49cc6 grid-tags-internal-grid-layout-breaking-bibliography
