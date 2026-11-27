@@ -143,6 +143,8 @@ pdf_marker_tag! {
     TermsItemLabel,
     /// `LBody` the term item including the label.
     TermsItemBody,
+    /// `Lbl` for a form field.
+    FormLabel,
     /// A generic `Lbl`.
     Label,
 }

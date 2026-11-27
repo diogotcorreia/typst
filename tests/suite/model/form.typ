@@ -956,3 +956,24 @@
   #form.checkbox()
   #form.textbox(width: 100pt)
 ]
+
+--- form-tagging pdftags ---
+
+#form[
+  text
+
+  #form.label(<txt>)[#underline[jdngisgjslg]]
+
+  more text
+
+  #form.textbox() <txt>
+
+  more text
+
+  #form.textbox() <txt2>
+
+  text
+
+  #form.label(<txt2>)[*aaaaaaa*]
+]
+

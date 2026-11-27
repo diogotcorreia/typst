@@ -48,7 +48,7 @@ use typst_syntax::Span;
 
 use crate::PdfOptions;
 use crate::tags::GroupId;
-use crate::tags::context::{Ctx, FigureCtx, GridCtx, ListCtx, TableCtx};
+use crate::tags::context::{Ctx, FigureCtx, FormFieldCtx, GridCtx, ListCtx, TableCtx};
 use crate::tags::groups::{BreakOpportunity, BreakPriority, GroupKind, Groups};
 use crate::tags::tree::text::TextAttr;
 use crate::tags::tree::{Break, TraversalStates, Tree, Unfinished};
@@ -376,6 +376,9 @@ fn progress_tree_start(tree: &mut TreeBuilder, elem: &Content) -> GroupId {
             PdfMarkerTagKind::TermsItemBody => {
                 push_group(tree, elem, GroupKind::TermsItemBody(None, None))
             }
+            PdfMarkerTagKind::FormLabel => {
+                push_group(tree, elem, GroupKind::FormFieldLabel(None))
+            }
             PdfMarkerTagKind::Label => push_tag(tree, elem, Tag::Lbl),
         }
     } else if let Some(link) = elem.to_packed::<LinkMarker>() {
@@ -387,7 +390,10 @@ fn progress_tree_start(tree: &mut TreeBuilder, elem: &Content) -> GroupId {
         || elem.is::<FormChoice>()
         || elem.is::<FormSignature>()
     {
-        push_group(tree, elem, GroupKind::FormField(None))
+        let group_id = tree.groups.list.next_id();
+        let figure_id =
+            tree.ctx.form_fields.push(FormFieldCtx::new(group_id, elem.clone()));
+        push_located(tree, elem, GroupKind::FormField(figure_id, elem.clone(), None))
     } else if let Some(_) = elem.to_packed::<TitleElem>() {
         push_tag(tree, elem, Tag::Title)
     } else if let Some(_) = elem.to_packed::<OutlineEntry>() {

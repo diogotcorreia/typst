@@ -11,11 +11,11 @@ use typst_library::foundations::{
 use typst_library::introspection::{Counter, Locator, LocatorLink};
 use typst_library::layout::{
     Abs, AlignElem, Alignment, Axes, BlockBody, BlockElem, BoxElem, Celled, ColumnsElem,
-    Em, FixedAlignment, Fr, GridCell, GridChild, GridElem, GridItem, HAlignment, HElem,
-    HideElem, InlineElem, LayoutElem, Length, MoveElem, OuterVAlignment, PadElem,
-    PageElem, PlaceElem, PlacementScope, Ratio, Region, Rel, RepeatElem, RotateElem,
-    ScaleElem, Sides, Size, Sizing, SkewElem, Spacing, StackChild, StackElem,
-    TrackSizings, VAlignment, VElem,
+    Em, FixedAlignment, Fr, FrameParent, GridCell, GridChild, GridElem, GridItem,
+    HAlignment, HElem, HideElem, Inherit, InlineElem, LayoutElem, Length, MoveElem,
+    OuterVAlignment, PadElem, PageElem, PlaceElem, PlacementScope, Ratio, Region, Rel,
+    RepeatElem, RotateElem, ScaleElem, Sides, Size, Sizing, SkewElem, Spacing,
+    StackChild, StackElem, TrackSizings, VAlignment, VElem,
 };
 use typst_library::math::EquationElem;
 use typst_library::model::{
@@ -712,11 +712,29 @@ const FORM_SIGNATURE_RULE: ShowFn<FormSignature> = |elem, _, styles| {
         .pack())
 };
 
-const FORM_LABEL_RULE: ShowFn<FormLabel> = |elem, engine, _| {
-    // Check that label exists and points to form field
-    elem.resolve_early(engine, elem.span())?;
+const FORM_LABEL_RULE: ShowFn<FormLabel> = |elem, _, _| {
+    Ok(BlockElem::single_layouter(
+        elem.clone(),
+        |elem, engine, locator, styles, region| {
+            // Check that label exists and points to form field
+            let target = elem.resolve_early(engine, elem.span()).map(Some);
+            let target = engine.delay(target);
 
-    Ok(elem.body.clone())
+            let mut frame = crate::layout_frame(
+                engine,
+                &PdfMarkerTag::FormLabel(elem.body.clone()),
+                locator,
+                styles,
+                region,
+            )?;
+
+            if let Some(target) = target {
+                frame.set_parent(FrameParent::new(target, Inherit::No));
+            }
+            Ok(frame)
+        },
+    )
+    .pack())
 };
 
 const FORM_WIDGET_RULE: ShowFn<FormWidget> = |elem, _, styles| {

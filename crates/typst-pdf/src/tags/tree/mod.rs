@@ -609,8 +609,41 @@ fn close_group(tree: &mut Tree, surface: &mut Surface, id: GroupId) -> GroupId {
             }
             tree.groups.push_group(parent, id);
         }
-        GroupKind::FormField(..) => {
-            tree.groups.push_group(direct_parent, id);
+        GroupKind::FormFieldWrapper(..) => unreachable!("only generated below"),
+        GroupKind::FormField(form_field, elem, _) => {
+            let span = group.span;
+            let form_field = *form_field;
+            let loc = elem.location().unwrap();
+
+            // Insert the wrapper.
+            let kind = GroupKind::FormFieldWrapper(form_field);
+            let wrapper = tree.groups.new_virtual(direct_parent, span, kind);
+            tree.groups.push_group(direct_parent, wrapper);
+
+            // Insert logical children when closing the logical parent, so they
+            // are at the end of the group. In some cases there might be
+            // multiple parent groups with the same location, only insert the
+            // children for the first parent group.
+            if let Some(located) = tree.groups.by_loc(&loc)
+                && located.id() == id
+                && let Some(children) = tree.logical_children.get(&loc)
+            {
+                tree.groups.push_groups(id, children);
+            }
+
+            // Push the form field into the wrapper.
+            tree.groups.get_mut(id).parent = wrapper;
+            tree.groups.push_group(wrapper, id);
+        }
+        GroupKind::FormFieldLabel(..) => {
+            if let GroupKind::FormField(figure, ..) =
+                tree.groups.get(semantic_parent).kind
+            {
+                let form_field_ctx = tree.ctx.form_fields.get_mut(figure);
+                form_field_ctx.labels.push(id);
+            } else {
+                tree.groups.push_group(direct_parent, id);
+            }
         }
         GroupKind::CodeBlock(..) => {
             tree.groups.push_group(direct_parent, id);

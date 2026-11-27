@@ -17,7 +17,7 @@ use typst_syntax::Span;
 
 use crate::PdfOptions;
 use crate::tags::context::{
-    AnnotationId, BBoxId, FigureId, GridId, ListId, TableId, TagId,
+    AnnotationId, BBoxId, FigureId, FormFieldId, GridId, ListId, TableId, TagId,
 };
 use crate::tags::resolve::TagNode;
 use crate::tags::tree::{ResolvedTextAttrs, TextAttr};
@@ -137,7 +137,9 @@ impl Groups {
             GroupKind::Image(..) => Never,
             GroupKind::Formula(..) => Never,
             GroupKind::Link(..) => NoPdfUa(BreakPriority::Span),
+            GroupKind::FormFieldWrapper(..) => Never,
             GroupKind::FormField(..) => Never,
+            GroupKind::FormFieldLabel(..) => Never,
             GroupKind::CodeBlock(..) => Never,
             GroupKind::CodeBlockLine(..) => Never,
             GroupKind::Par(..) => NoPdfUa(BreakPriority::Par),
@@ -227,7 +229,9 @@ impl Groups {
             | GroupKind::FigureCaption(..)
             | GroupKind::Image(..)
             | GroupKind::Formula(..)
+            | GroupKind::FormFieldWrapper(..)
             | GroupKind::FormField(..)
+            | GroupKind::FormFieldLabel(..)
             | GroupKind::CodeBlock(..)
             | GroupKind::CodeBlockLine(..)
             | GroupKind::Transparent => unreachable!(),
@@ -480,7 +484,9 @@ pub enum GroupKind {
     Image(Packed<ImageElem>, BBoxId, Option<Locale>),
     Formula(Packed<EquationElem>, BBoxId, Option<Locale>),
     Link(Packed<LinkMarker>, Option<Locale>),
-    FormField(Option<Locale>),
+    FormFieldWrapper(FormFieldId),
+    FormField(FormFieldId, Content, Option<Locale>),
+    FormFieldLabel(Option<Locale>),
     CodeBlock(Option<Locale>),
     CodeBlockLine(Option<Locale>),
     /// Whether this paragraph is a `weak` pragraph that is omitted when it
@@ -516,7 +522,9 @@ impl std::fmt::Debug for GroupKind {
             Self::Image(..) => "Image",
             Self::Formula(..) => "Formula",
             Self::Link(..) => "Link",
+            Self::FormFieldWrapper(..) => "FormFieldWrapper",
             Self::FormField(..) => "FormField",
+            Self::FormFieldLabel(..) => "FormFieldLabel",
             Self::CodeBlock(..) => "CodeBlock",
             Self::CodeBlockLine(..) => "CodeBlockLine",
             Self::Par(..) => "Par",
@@ -628,7 +636,9 @@ impl GroupKind {
             GroupKind::Image(_, _, lang) => lang,
             GroupKind::Formula(_, _, lang) => lang,
             GroupKind::Link(_, lang) => lang,
-            GroupKind::FormField(lang) => lang,
+            GroupKind::FormFieldWrapper(_) => return None,
+            GroupKind::FormField(_, _, lang) => lang,
+            GroupKind::FormFieldLabel(lang) => lang,
             GroupKind::CodeBlock(lang) => lang,
             GroupKind::CodeBlockLine(lang) => lang,
             GroupKind::Par(lang) => lang,
@@ -661,7 +671,9 @@ impl GroupKind {
             GroupKind::Image(_, _, lang) => lang,
             GroupKind::Formula(_, _, lang) => lang,
             GroupKind::Link(_, lang) => lang,
-            GroupKind::FormField(lang) => lang,
+            GroupKind::FormFieldWrapper(_) => return None,
+            GroupKind::FormField(_, _, lang) => lang,
+            GroupKind::FormFieldLabel(lang) => lang,
             GroupKind::CodeBlock(lang) => lang,
             GroupKind::CodeBlockLine(lang) => lang,
             GroupKind::Par(lang) => lang,

@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use typst_library::foundations::StyleChain;
 use typst_library::layout::{
-    Abs, Fragment, Frame, FrameItem, HideElem, InlineItem, Point, Sides,
+    Abs, Fragment, Frame, FrameItem, FrameParent, HideElem, InlineItem, Point, Sides,
 };
-use typst_library::model::{LinkElem, Linkage};
+use typst_library::model::{FormElem, LinkElem, Linkage};
 
 /// Frame-level modifications resulting from styles that do not impose any
 /// layout structure.
@@ -27,11 +27,16 @@ pub struct FrameModifiers {
     link: Option<Arc<Linkage>>,
     /// Whether the contents of the frame should be hidden.
     pub(crate) hidden: bool,
+    pub(crate) parent: Option<FrameParent>,
 }
 
 impl FrameModifiers {
     pub(super) fn with_link(link: Linkage) -> Self {
-        Self { link: Some(Arc::new(link)), hidden: false }
+        Self {
+            link: Some(Arc::new(link)),
+            hidden: false,
+            parent: None,
+        }
     }
 
     /// Retrieve all modifications that should be applied per-frame.
@@ -39,6 +44,7 @@ impl FrameModifiers {
         Self {
             link: styles.get_cloned(LinkElem::current),
             hidden: styles.get(HideElem::hidden),
+            parent: styles.get(FormElem::frame_parent),
         }
     }
 }
@@ -136,6 +142,10 @@ pub(super) fn modify_frame(
 }
 
 pub(super) fn apply_hide(frame: &mut Frame, modifiers: &FrameModifiers) {
+    if let Some(parent) = modifiers.parent {
+        frame.set_parent(parent);
+    }
+
     if modifiers.hidden {
         frame.hide();
     }
@@ -179,12 +189,17 @@ where
     // level of layout. This means we don't generate redundant nested links,
     // which may bloat the output considerably.
     let reset;
+    // let reset_frame_parent;
     let outer = styles;
     let mut styles = styles;
     if modifiers.link.is_some() {
         reset = LinkElem::current.set(None).wrap();
         styles = outer.chain(&reset);
     }
+    // if modifiers.parent.is_some() {
+    //     reset_frame_parent = FormElem::frame_parent.set(None).wrap();
+    //     styles = outer.chain(&reset_frame_parent);
+    // }
 
     if !allow_links {
         modifiers.link = None;

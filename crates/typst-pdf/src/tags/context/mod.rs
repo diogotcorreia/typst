@@ -7,6 +7,7 @@ use typst_library::layout::{Abs, Point, Rect};
 
 use crate::convert::FrameContext;
 use crate::tags::context::figure::build_figure;
+use crate::tags::context::form::build_form_field;
 use crate::tags::context::grid::build_grid;
 use crate::tags::context::table::build_table;
 use crate::tags::groups::GroupKind;
@@ -14,11 +15,13 @@ use crate::tags::tree::{ResolvedTextAttrs, Tree};
 use crate::tags::util::{Id, IdVec, PropertyOptRef};
 
 pub use crate::tags::context::figure::FigureCtx;
+pub use crate::tags::context::form::FormFieldCtx;
 pub use crate::tags::context::grid::GridCtx;
 pub use crate::tags::context::list::ListCtx;
 pub use crate::tags::context::table::TableCtx;
 
 mod figure;
+mod form;
 mod grid;
 mod list;
 mod table;
@@ -26,6 +29,7 @@ mod table;
 pub type TableId = Id<TableCtx>;
 pub type GridId = Id<GridCtx>;
 pub type FigureId = Id<FigureCtx>;
+pub type FormFieldId = Id<FormFieldCtx>;
 pub type ListId = Id<ListCtx>;
 pub type BBoxId = Id<BBoxCtx>;
 pub type TagId = Id<TagKind>;
@@ -62,6 +66,7 @@ pub struct Ctx {
     pub tables: IdVec<TableCtx>,
     pub grids: IdVec<GridCtx>,
     pub figures: IdVec<FigureCtx>,
+    pub form_fields: IdVec<FormFieldCtx>,
     pub lists: IdVec<ListCtx>,
     pub bboxes: IdVec<BBoxCtx>,
 }
@@ -72,6 +77,7 @@ impl Ctx {
             tables: IdVec::new(),
             grids: IdVec::new(),
             figures: IdVec::new(),
+            form_fields: IdVec::new(),
             lists: IdVec::new(),
             bboxes: IdVec::new(),
         }
@@ -206,6 +212,9 @@ impl BBoxCtx {
 pub fn finish(tree: &mut Tree) {
     for figure_id in tree.ctx.figures.ids() {
         build_figure(tree, figure_id);
+    }
+    for form_field_id in tree.ctx.form_fields.ids() {
+        build_form_field(tree, form_field_id);
     }
     for table_id in tree.ctx.tables.ids() {
         build_table(tree, table_id);

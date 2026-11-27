@@ -548,6 +548,7 @@ impl GroupItem {
 impl Debug for GroupItem {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str("Group ")?;
+        self.parent.fmt(f)?;
         self.frame.fmt(f)
     }
 }

@@ -21,7 +21,7 @@ use crate::introspection::{
     Counter, CounterKey, Introspector, Location, QueryIntrospection,
     QueryLabelIntrospection,
 };
-use crate::layout::{Abs, Em, FixedAlignment, Frame, Length, Rel, Sides, Size, Sizing};
+use crate::layout::{Abs, Em, FixedAlignment, Frame, FrameParent, Length, Rel, Sides, Size, Sizing};
 use crate::text::TextElem;
 use crate::visualize::{CircleElem, Paint, RectElem};
 
@@ -202,6 +202,10 @@ pub struct FormElem {
     #[internal]
     #[ghost]
     pub form: Option<Packed<FormElem>>,
+
+    #[internal]
+    #[ghost]
+    pub frame_parent: Option<FrameParent>,
 }
 
 impl ShowSet for Packed<FormElem> {
